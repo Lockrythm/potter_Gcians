@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import libraryBg from '@/assets/library-hero-bg.jpg';
+import potterLogo from '@/assets/potter-glasses-logo.webp';
+import { FloatingBooks } from './FloatingBooks';
 
 export function Hero() {
   return (
@@ -18,7 +20,7 @@ export function Hero() {
       
       {/* Magical Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(30)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-1 h-1 bg-secondary rounded-full"
@@ -27,83 +29,22 @@ export function Hero() {
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              y: [-20, -100],
+              y: [-20, -150],
               opacity: [0, 1, 0],
               scale: [0, 1.5, 0],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: 3 + Math.random() * 3,
               repeat: Infinity,
-              delay: Math.random() * 3,
+              delay: Math.random() * 5,
               ease: 'easeOut',
             }}
           />
         ))}
       </div>
 
-      {/* Floating Elements */}
-      <motion.div
-        className="absolute left-[10%] top-[30%] text-6xl opacity-60"
-        animate={{
-          y: [0, -15, 0],
-          rotate: [-5, 5, -5],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      >
-        📖
-      </motion.div>
-
-      <motion.div
-        className="absolute right-[15%] top-[25%] text-5xl opacity-50"
-        animate={{
-          y: [0, -20, 0],
-          rotate: [5, -5, 5],
-        }}
-        transition={{
-          duration: 5,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 0.5,
-        }}
-      >
-        👓
-      </motion.div>
-
-      <motion.div
-        className="absolute left-[20%] bottom-[25%] text-4xl opacity-40"
-        animate={{
-          y: [0, -12, 0],
-          x: [0, 5, 0],
-        }}
-        transition={{
-          duration: 3.5,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 1,
-        }}
-      >
-        ✨
-      </motion.div>
-
-      <motion.div
-        className="absolute right-[10%] bottom-[30%] text-5xl opacity-50"
-        animate={{
-          y: [0, -18, 0],
-          rotate: [-3, 3, -3],
-        }}
-        transition={{
-          duration: 4.5,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 0.3,
-        }}
-      >
-        🪶
-      </motion.div>
+      {/* Floating Books */}
+      <FloatingBooks />
 
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">
@@ -113,14 +54,21 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          {/* Decorative Badge */}
+          {/* Potter Logo Badge */}
           <motion.div 
-            className="mb-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-secondary/20 border border-secondary/40 backdrop-blur-sm"
+            className="mb-8 inline-flex items-center gap-3 px-6 py-3 rounded-full bg-secondary/20 border border-secondary/40 backdrop-blur-sm"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 30px hsl(var(--secondary) / 0.4)' }}
           >
-            <span className="text-xl">⚡</span>
+            <motion.img 
+              src={potterLogo} 
+              alt="Potter" 
+              className="h-8 w-auto"
+              animate={{ rotate: [0, 5, 0, -5, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            />
             <span className="text-sm font-medium text-secondary">
               The Magical Book Bank
             </span>

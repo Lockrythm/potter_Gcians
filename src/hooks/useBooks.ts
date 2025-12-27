@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Book } from '@/types/book';
+import { TEST_BOOKS } from '@/data/testBooks';
 
 interface UseBookFilters {
   category?: string;
@@ -10,95 +11,136 @@ interface UseBookFilters {
   searchQuery?: string;
 }
 
+// Generate test books with IDs for display
+const getTestBooksWithIds = (): Book[] => {
+  return TEST_BOOKS.map((book, index) => ({
+    ...book,
+    id: `test-book-${index + 1}`,
+  }));
+};
+
 export function useBooks(filters: UseBookFilters = {}) {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [books, setBooks] = useState<Book[]>(getTestBooksWithIds());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
+    // Start with test books immediately
+    let testBooks = getTestBooksWithIds();
     
-    const booksRef = collection(db, 'books');
-    let q = query(booksRef, where('isAvailable', '==', true), orderBy('createdAt', 'desc'));
+    // Apply filters to test books
+    if (filters.category) {
+      testBooks = testBooks.filter((b) => b.category === filters.category);
+    }
+    if (filters.condition) {
+      testBooks = testBooks.filter((b) => b.condition === filters.condition);
+    }
+    if (filters.type) {
+      testBooks = testBooks.filter(
+        (b) => b.type === filters.type || b.type === 'both'
+      );
+    }
+    if (filters.searchQuery) {
+      const search = filters.searchQuery.toLowerCase();
+      testBooks = testBooks.filter(
+        (b) =>
+          b.title.toLowerCase().includes(search) ||
+          b.author.toLowerCase().includes(search) ||
+          b.category.toLowerCase().includes(search)
+      );
+    }
+    
+    setBooks(testBooks);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        let fetchedBooks = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Book[];
+    // Try to fetch from Firebase (will merge with test books if successful)
+    try {
+      const booksRef = collection(db, 'books');
+      let q = query(booksRef, where('isAvailable', '==', true), orderBy('createdAt', 'desc'));
 
-        // Client-side filtering
-        if (filters.category) {
-          fetchedBooks = fetchedBooks.filter((b) => b.category === filters.category);
-        }
-        if (filters.condition) {
-          fetchedBooks = fetchedBooks.filter((b) => b.condition === filters.condition);
-        }
-        if (filters.type) {
-          fetchedBooks = fetchedBooks.filter(
-            (b) => b.type === filters.type || b.type === 'both'
-          );
-        }
-        if (filters.searchQuery) {
-          const search = filters.searchQuery.toLowerCase();
-          fetchedBooks = fetchedBooks.filter(
-            (b) =>
-              b.title.toLowerCase().includes(search) ||
-              b.author.toLowerCase().includes(search) ||
-              b.category.toLowerCase().includes(search)
-          );
-        }
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          if (snapshot.docs.length > 0) {
+            let fetchedBooks = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate() || new Date(),
+            })) as Book[];
 
-        setBooks(fetchedBooks);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Error fetching books:', err);
-        setError('Failed to load books. Please check your Firebase configuration.');
-        setLoading(false);
-      }
-    );
+            // Apply filters
+            if (filters.category) {
+              fetchedBooks = fetchedBooks.filter((b) => b.category === filters.category);
+            }
+            if (filters.condition) {
+              fetchedBooks = fetchedBooks.filter((b) => b.condition === filters.condition);
+            }
+            if (filters.type) {
+              fetchedBooks = fetchedBooks.filter(
+                (b) => b.type === filters.type || b.type === 'both'
+              );
+            }
+            if (filters.searchQuery) {
+              const search = filters.searchQuery.toLowerCase();
+              fetchedBooks = fetchedBooks.filter(
+                (b) =>
+                  b.title.toLowerCase().includes(search) ||
+                  b.author.toLowerCase().includes(search) ||
+                  b.category.toLowerCase().includes(search)
+              );
+            }
 
-    return () => unsubscribe();
+            setBooks(fetchedBooks);
+          }
+          setLoading(false);
+        },
+        () => {
+          // Firebase error - keep showing test books
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch {
+      // Firebase not configured - keep showing test books
+      setLoading(false);
+    }
   }, [filters.category, filters.condition, filters.type, filters.searchQuery]);
 
   return { books, loading, error };
 }
 
 export function useAllBooks() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [books, setBooks] = useState<Book[]>(getTestBooksWithIds());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const booksRef = collection(db, 'books');
-    const q = query(booksRef, orderBy('createdAt', 'desc'));
+    try {
+      const booksRef = collection(db, 'books');
+      const q = query(booksRef, orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const fetchedBooks = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Book[];
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          if (snapshot.docs.length > 0) {
+            const fetchedBooks = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate() || new Date(),
+            })) as Book[];
+            setBooks(fetchedBooks);
+          }
+          setLoading(false);
+        },
+        () => {
+          setLoading(false);
+        }
+      );
 
-        setBooks(fetchedBooks);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Error fetching books:', err);
-        setError('Failed to load books.');
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch {
+      setLoading(false);
+    }
   }, []);
 
   return { books, loading, error };

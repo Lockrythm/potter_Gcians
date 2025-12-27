@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -16,7 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen, Home, ArrowLeft } from 'lucide-react';
+import potterLogo from '@/assets/potter-glasses-logo.webp';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'potter2024';
 
@@ -211,7 +213,7 @@ export default function RestrictedSection() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-secondary/20">
           <CardHeader className="text-center">
-            <div className="text-4xl mb-2">🔒</div>
+            <img src={potterLogo} alt="Potter" className="h-12 w-auto mx-auto mb-4" />
             <CardTitle>The Restricted Section</CardTitle>
             <p className="text-sm text-muted-foreground mt-2">
               This area is for authorized personnel only.
@@ -242,6 +244,14 @@ export default function RestrictedSection() {
                 Enter
               </Button>
             </form>
+            <div className="mt-4 text-center">
+              <Button variant="link" asChild className="text-muted-foreground">
+                <Link to="/">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -252,9 +262,20 @@ export default function RestrictedSection() {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">The Restricted Section</h1>
-          <p className="text-muted-foreground">Manage your books and categories</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <img src={potterLogo} alt="Potter" className="h-10 w-auto" />
+              The Restricted Section
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage your books and categories</p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link to="/">
+              <Home className="h-4 w-4 mr-2" />
+              Back to Home
+            </Link>
+          </Button>
         </div>
 
         <Tabs defaultValue="books" className="space-y-6">
