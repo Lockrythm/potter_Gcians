@@ -121,6 +121,20 @@
     box-shadow: 0 0 20px hsl(var(--secondary) / 0.5);
   }
 
+  /* Magical text glow */
+  .magical-text-glow {
+    text-shadow: 0 0 20px hsl(var(--secondary) / 0.4);
+  }
+
+  /* Magical button hover */
+  .magical-button {
+    @apply transition-all duration-300;
+  }
+  .magical-button:hover {
+    box-shadow: 0 0 25px hsl(var(--secondary) / 0.5);
+    transform: translateY(-2px);
+  }
+
   /* Fade in animation */
   .fade-in {
     animation: fadeIn 0.5s ease-out forwards;
