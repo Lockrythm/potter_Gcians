@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Sun, Moon, ShoppingBag } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
+import potterLogo from '@/assets/potter-glasses-logo.webp';
 
 interface NavbarProps {
   onSearch?: (query: string) => void;
@@ -32,13 +34,23 @@ export function Navbar({ onSearch }: NavbarProps) {
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <span className="text-2xl">👓</span>
-              <span className="absolute -top-1 -right-1 text-xs">⚡</span>
-            </div>
-            <span className="font-cinzel text-xl font-bold text-primary hidden sm:block">
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img 
+                src={potterLogo} 
+                alt="Potter Book Bank" 
+                className="h-10 w-auto object-contain"
+              />
+            </motion.div>
+            <motion.span 
+              className="font-cinzel text-xl font-bold text-primary hidden sm:block"
+              whileHover={{ color: 'hsl(var(--secondary))' }}
+            >
               Potter
-            </span>
+            </motion.span>
           </Link>
 
           {/* Search Bar */}
