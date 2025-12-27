@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
 import { BookCard } from '@/components/BookCard';
 import { FilterDrawer } from '@/components/FilterDrawer';
+import { ScrollVideoPlayer } from '@/components/ScrollVideoPlayer';
 import { useBooks } from '@/hooks/useBooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -50,28 +50,20 @@ export default function Library() {
       <CartDrawer />
 
       <main className="container mx-auto px-4 py-8">
+        {/* Scroll-linked Video Player */}
+        <ScrollVideoPlayer />
         {/* Header */}
-        <motion.div 
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="mb-8 animate-fade-in">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">
             The <span className="text-primary">Library</span>
           </h1>
           <p className="text-muted-foreground">
             Browse our magical collection. Buy or rent your favorite books.
           </p>
-        </motion.div>
+        </div>
 
         {/* Filter Bar */}
-        <motion.div 
-          className="flex items-center justify-between mb-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
+        <div className="flex items-center justify-between mb-6 animate-fade-in">
           <FilterDrawer
             selectedCategory={category}
             selectedCondition={condition}
@@ -100,17 +92,13 @@ export default function Library() {
               </span>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Search Query Display */}
         {searchQuery && (
-          <motion.p 
-            className="text-sm text-muted-foreground mb-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <p className="text-sm text-muted-foreground mb-4 animate-fade-in">
             Showing results for "<span className="text-secondary">{searchQuery}</span>"
-          </motion.p>
+          </p>
         )}
 
         {/* Error State */}
@@ -138,56 +126,29 @@ export default function Library() {
 
         {/* Empty State */}
         {!loading && !error && books.length === 0 && (
-          <motion.div 
-            className="text-center py-12"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <motion.span 
-              className="text-6xl block mb-4"
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              📚
-            </motion.span>
+          <div className="text-center py-12 animate-fade-in">
+            <span className="text-6xl block mb-4">📚</span>
             <p className="text-muted-foreground">No books found</p>
             <p className="text-sm text-muted-foreground">
               Try adjusting your filters or search query
             </p>
-          </motion.div>
+          </div>
         )}
 
         {/* Books Grid */}
         {!loading && !error && books.length > 0 && (
-          <motion.div 
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            {books.map((book, index) => (
-              <motion.div
-                key={book.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
-              >
-                <BookCard book={book} />
-              </motion.div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-fade-in">
+            {books.map((book) => (
+              <BookCard key={book.id} book={book} />
             ))}
-          </motion.div>
+          </div>
         )}
 
         {/* Results Count */}
         {!loading && !error && books.length > 0 && (
-          <motion.p 
-            className="text-sm text-muted-foreground text-center mt-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
+          <p className="text-sm text-muted-foreground text-center mt-8">
             Showing {books.length} book{books.length !== 1 ? 's' : ''}
-          </motion.p>
+          </p>
         )}
       </main>
     </div>
