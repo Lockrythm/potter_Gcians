@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { useAllBooks } from '@/hooks/useBooks';
-import { Book, BookCondition, BookType } from '@/types/book';
+import { useCategories } from '@/hooks/useCategories';
+import { Book, BookCondition, BookType, Category } from '@/types/book';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,16 +14,16 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen } from 'lucide-react';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'potter2024';
 
 interface BookFormData {
   title: string;
   author: string;
-  semester: number;
-  subject: string;
+  category: string;
   condition: BookCondition;
   type: BookType;
   buyPrice: number;
@@ -35,8 +36,7 @@ interface BookFormData {
 const initialFormData: BookFormData = {
   title: '',
   author: '',
-  semester: 1,
-  subject: '',
+  category: '',
   condition: 'New',
   type: 'both',
   buyPrice: 0,
@@ -55,8 +55,13 @@ export default function RestrictedSection() {
   const [formData, setFormData] = useState<BookFormData>(initialFormData);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Category management
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
 
   const { books, loading, error } = useAllBooks();
+  const { categories, loading: categoriesLoading } = useCategories();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,8 +85,7 @@ export default function RestrictedSection() {
     setFormData({
       title: book.title,
       author: book.author,
-      semester: book.semester,
-      subject: book.subject,
+      category: book.category,
       condition: book.condition,
       type: book.type,
       buyPrice: book.buyPrice,
@@ -169,11 +173,43 @@ export default function RestrictedSection() {
     }
   };
 
+  // Category CRUD
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsAddingCategory(true);
+
+    try {
+      await addDoc(collection(db, 'categories'), {
+        name: newCategoryName.trim(),
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Category Added', description: `"${newCategoryName}" has been created.` });
+      setNewCategoryName('');
+    } catch (err) {
+      console.error('Error adding category:', err);
+      toast({ title: 'Error', description: 'Failed to add category.', variant: 'destructive' });
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (category: Category) => {
+    if (!confirm(`Delete category "${category.name}"? Books with this category won't be deleted.`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'categories', category.id));
+      toast({ title: 'Category Deleted', description: `"${category.name}" has been removed.` });
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      toast({ title: 'Error', description: 'Failed to delete category.', variant: 'destructive' });
+    }
+  };
+
   // Password Gate
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md border-secondary/20">
           <CardHeader className="text-center">
             <div className="text-4xl mb-2">🔒</div>
             <CardTitle>The Restricted Section</CardTitle>
@@ -201,7 +237,7 @@ export default function RestrictedSection() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
                 <Lock className="mr-2 h-4 w-4" />
                 Enter
               </Button>
@@ -216,111 +252,186 @@ export default function RestrictedSection() {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">The Restricted Section</h1>
-            <p className="text-muted-foreground">Manage your book inventory</p>
-          </div>
-          <Button onClick={openAddDialog} className="magical-glow">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Book
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">The Restricted Section</h1>
+          <p className="text-muted-foreground">Manage your books and categories</p>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="text-center py-12 text-destructive">
-            {error}
-          </div>
-        )}
+        <Tabs defaultValue="books" className="space-y-6">
+          <TabsList className="bg-muted">
+            <TabsTrigger value="books" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Books
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Categories
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12 text-muted-foreground">
-            Loading books...
-          </div>
-        )}
+          {/* Books Tab */}
+          <TabsContent value="books">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted-foreground">{books.length} books total</p>
+              <Button onClick={openAddDialog} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Book
+              </Button>
+            </div>
 
-        {/* Books Table */}
-        {!loading && !error && (
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Book</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Sem</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Buy</TableHead>
-                      <TableHead>Rent</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {books.map((book) => (
-                      <TableRow key={book.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
-                              {book.imageUrl ? (
-                                <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">📖</div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium line-clamp-1">{book.title}</p>
-                              <p className="text-xs text-muted-foreground">{book.author}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{book.subject}</TableCell>
-                        <TableCell>{book.semester}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">{book.type}</Badge>
-                        </TableCell>
-                        <TableCell>Rs {book.buyPrice}</TableCell>
-                        <TableCell className="text-xs">
-                          7d: {book.rentPrice7Days}<br />
-                          14d: {book.rentPrice14Days}<br />
-                          30d: {book.rentPrice30Days}
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={book.isAvailable}
-                            onCheckedChange={() => toggleAvailability(book)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(book)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(book)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+            {error && (
+              <div className="text-center py-12 text-destructive">{error}</div>
+            )}
+
+            {loading && (
+              <div className="text-center py-12 text-muted-foreground">Loading books...</div>
+            )}
+
+            {!loading && !error && (
+              <Card className="border-border/50">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Book</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Buy</TableHead>
+                          <TableHead>Rent</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {books.map((book) => (
+                          <TableRow key={book.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
+                                  {book.imageUrl ? (
+                                    <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">📖</div>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-medium line-clamp-1">{book.title}</p>
+                                  <p className="text-xs text-muted-foreground">{book.author}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="border-secondary/30">
+                                {book.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="capitalize">{book.type}</Badge>
+                            </TableCell>
+                            <TableCell>Rs {book.buyPrice}</TableCell>
+                            <TableCell className="text-xs">
+                              7d: {book.rentPrice7Days}<br />
+                              14d: {book.rentPrice14Days}<br />
+                              30d: {book.rentPrice30Days}
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={book.isAvailable}
+                                onCheckedChange={() => toggleAvailability(book)}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(book)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(book)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {books.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                              No books yet. Add your first book!
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories">
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Manage Categories</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Categories appear in the filter drawer on the library page.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Add Category */}
+                <div className="flex gap-3">
+                  <Input
+                    placeholder="New category name..."
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                  />
+                  <Button 
+                    onClick={handleAddCategory} 
+                    disabled={isAddingCategory || !newCategoryName.trim()}
+                    className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Categories List */}
+                {categoriesLoading ? (
+                  <p className="text-muted-foreground">Loading categories...</p>
+                ) : categories.length === 0 ? (
+                  <p className="text-muted-foreground py-8 text-center">
+                    No categories yet. Add your first category above.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {categories.map((category) => (
+                      <div
+                        key={category.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Tag className="h-4 w-4 text-secondary" />
+                          <span>{category.name}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteCategory(category)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ))}
-                    {books.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
-                          No books yet. Add your first book!
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-        {/* Add/Edit Dialog */}
+        {/* Add/Edit Book Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -347,29 +458,20 @@ export default function RestrictedSection() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="semester">Semester</Label>
+                  <Label htmlFor="category">Category</Label>
                   <Select
-                    value={formData.semester.toString()}
-                    onValueChange={(val) => setFormData({ ...formData, semester: parseInt(val) })}
+                    value={formData.category}
+                    onValueChange={(val) => setFormData({ ...formData, category: val })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                        <SelectItem key={sem} value={sem.toString()}>Semester {sem}</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    required
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="condition">Condition</Label>
@@ -411,7 +513,7 @@ export default function RestrictedSection() {
                     onChange={(e) => setFormData({ ...formData, buyPrice: parseInt(e.target.value) || 0 })}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="image">Book Cover</Label>
                   <Input
                     id="image"
@@ -465,7 +567,7 @@ export default function RestrictedSection() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                   {isSubmitting ? 'Saving...' : editingBook ? 'Update Book' : 'Add Book'}
                 </Button>
               </div>

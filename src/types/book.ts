@@ -5,8 +5,7 @@ export interface Book {
   id: string;
   title: string;
   author: string;
-  semester: number;
-  subject: string;
+  category: string; // Dynamic category from Firestore
   condition: BookCondition;
   type: BookType;
   buyPrice: number;
@@ -25,4 +24,10 @@ export interface CartItem {
   quantity: number;
   purchaseType: 'buy' | 'rent';
   rentDuration?: RentDuration;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  createdAt: Date;
 }

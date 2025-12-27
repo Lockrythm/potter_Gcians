@@ -1,24 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
 import { BookCard } from '@/components/BookCard';
-import { BookFilters } from '@/components/BookFilters';
+import { FilterDrawer } from '@/components/FilterDrawer';
 import { useBooks } from '@/hooks/useBooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Library() {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [semester, setSemester] = useState(searchParams.get('semester') || '');
-  const [subject, setSubject] = useState(searchParams.get('subject') || '');
+  const [category, setCategory] = useState(searchParams.get('category') || '');
   const [condition, setCondition] = useState(searchParams.get('condition') || '');
   const [type, setType] = useState(searchParams.get('type') || '');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
 
   const { books, loading, error } = useBooks({
-    semester: semester ? parseInt(semester) : undefined,
-    subject: subject || undefined,
+    category: category || undefined,
     condition: condition || undefined,
     type: type || undefined,
     searchQuery: searchQuery || undefined,
@@ -27,17 +26,15 @@ export default function Library() {
   // Update URL params when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (semester) params.set('semester', semester);
-    if (subject) params.set('subject', subject);
+    if (category) params.set('category', category);
     if (condition) params.set('condition', condition);
     if (type) params.set('type', type);
     if (searchQuery) params.set('search', searchQuery);
     setSearchParams(params, { replace: true });
-  }, [semester, subject, condition, type, searchQuery, setSearchParams]);
+  }, [category, condition, type, searchQuery, setSearchParams]);
 
   const handleClearFilters = () => {
-    setSemester('');
-    setSubject('');
+    setCategory('');
     setCondition('');
     setType('');
     setSearchQuery('');
@@ -54,33 +51,66 @@ export default function Library() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 fade-in">
-          <h1 className="text-3xl font-bold mb-2">
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">
             The <span className="text-primary">Library</span>
           </h1>
           <p className="text-muted-foreground">
-            Browse our collection of textbooks. Buy or rent for your semester.
+            Browse our magical collection. Buy or rent your favorite books.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Filters */}
-        <BookFilters
-          semester={semester}
-          subject={subject}
-          condition={condition}
-          type={type}
-          onSemesterChange={setSemester}
-          onSubjectChange={setSubject}
-          onConditionChange={setCondition}
-          onTypeChange={setType}
-          onClearFilters={handleClearFilters}
-        />
+        {/* Filter Bar */}
+        <motion.div 
+          className="flex items-center justify-between mb-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <FilterDrawer
+            selectedCategory={category}
+            selectedCondition={condition}
+            selectedType={type}
+            onCategoryChange={setCategory}
+            onConditionChange={setCondition}
+            onTypeChange={setType}
+            onClearFilters={handleClearFilters}
+          />
+          
+          {/* Active Filter Tags */}
+          <div className="flex gap-2 flex-wrap">
+            {category && (
+              <span className="text-xs px-2 py-1 rounded-full bg-secondary/20 text-secondary border border-secondary/30">
+                {category}
+              </span>
+            )}
+            {condition && (
+              <span className="text-xs px-2 py-1 rounded-full bg-secondary/20 text-secondary border border-secondary/30">
+                {condition}
+              </span>
+            )}
+            {type && (
+              <span className="text-xs px-2 py-1 rounded-full bg-secondary/20 text-secondary border border-secondary/30">
+                {type}
+              </span>
+            )}
+          </div>
+        </motion.div>
 
         {/* Search Query Display */}
         {searchQuery && (
-          <p className="text-sm text-muted-foreground mb-4">
-            Showing results for "{searchQuery}"
-          </p>
+          <motion.p 
+            className="text-sm text-muted-foreground mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            Showing results for "<span className="text-secondary">{searchQuery}</span>"
+          </motion.p>
         )}
 
         {/* Error State */}
@@ -108,33 +138,56 @@ export default function Library() {
 
         {/* Empty State */}
         {!loading && !error && books.length === 0 && (
-          <div className="text-center py-12">
-            <span className="text-6xl">📚</span>
-            <p className="text-muted-foreground mt-4">No books found</p>
+          <motion.div 
+            className="text-center py-12"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <motion.span 
+              className="text-6xl block mb-4"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              📚
+            </motion.span>
+            <p className="text-muted-foreground">No books found</p>
             <p className="text-sm text-muted-foreground">
               Try adjusting your filters or search query
             </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Books Grid */}
         {!loading && !error && books.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <motion.div 
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
             {books.map((book, index) => (
-              <BookCard
+              <motion.div
                 key={book.id}
-                book={book}
-                style={{ animationDelay: `${index * 50}ms` }}
-              />
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+              >
+                <BookCard book={book} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Results Count */}
         {!loading && !error && books.length > 0 && (
-          <p className="text-sm text-muted-foreground text-center mt-8">
+          <motion.p 
+            className="text-sm text-muted-foreground text-center mt-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
             Showing {books.length} book{books.length !== 1 ? 's' : ''}
-          </p>
+          </motion.p>
         )}
       </main>
     </div>

@@ -4,8 +4,7 @@ import { db } from '@/lib/firebase';
 import { Book } from '@/types/book';
 
 interface UseBookFilters {
-  semester?: number;
-  subject?: string;
+  category?: string;
   condition?: string;
   type?: string;
   searchQuery?: string;
@@ -32,11 +31,8 @@ export function useBooks(filters: UseBookFilters = {}) {
         })) as Book[];
 
         // Client-side filtering
-        if (filters.semester) {
-          fetchedBooks = fetchedBooks.filter((b) => b.semester === filters.semester);
-        }
-        if (filters.subject) {
-          fetchedBooks = fetchedBooks.filter((b) => b.subject === filters.subject);
+        if (filters.category) {
+          fetchedBooks = fetchedBooks.filter((b) => b.category === filters.category);
         }
         if (filters.condition) {
           fetchedBooks = fetchedBooks.filter((b) => b.condition === filters.condition);
@@ -52,7 +48,7 @@ export function useBooks(filters: UseBookFilters = {}) {
             (b) =>
               b.title.toLowerCase().includes(search) ||
               b.author.toLowerCase().includes(search) ||
-              b.subject.toLowerCase().includes(search)
+              b.category.toLowerCase().includes(search)
           );
         }
 
@@ -68,7 +64,7 @@ export function useBooks(filters: UseBookFilters = {}) {
     );
 
     return () => unsubscribe();
-  }, [filters.semester, filters.subject, filters.condition, filters.type, filters.searchQuery]);
+  }, [filters.category, filters.condition, filters.type, filters.searchQuery]);
 
   return { books, loading, error };
 }
