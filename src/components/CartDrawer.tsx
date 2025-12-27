@@ -7,6 +7,7 @@ import { openWhatsAppCheckout } from '@/lib/whatsapp';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minus, Plus, Trash2, Send, Sparkles } from 'lucide-react';
 import { CheckoutForm } from './CheckoutForm';
 import { CustomerInfo } from '@/types/order';
@@ -42,7 +43,8 @@ export function CartDrawer() {
       description: 'Complete the WhatsApp message to confirm your order.',
     });
     
-    // Save to Firebase in background (non-blocking)
+    // Save to Firebase with proper date/time
+    const now = new Date();
     const orderData = {
       items: items.map(item => ({
         bookId: item.book.id,
@@ -57,13 +59,27 @@ export function CartDrawer() {
       customerInfo,
       total: getTotal(),
       status: 'pending',
+      orderDate: now.toISOString(),
+      orderDateFormatted: now.toLocaleString('en-PK', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+      }),
       createdAt: serverTimestamp(),
     };
     
-    // Fire-and-forget - don't block UI
-    addDoc(collection(db, 'orders'), orderData).catch(err => 
-      console.error('Background order save failed:', err)
-    );
+    // Save to Firebase with proper error handling
+    addDoc(collection(db, 'orders'), orderData)
+      .then((docRef) => {
+        console.log('Order saved with ID:', docRef.id);
+      })
+      .catch(err => {
+        console.error('Order save failed:', err);
+        toast({
+          title: 'Warning',
+          description: 'Order sent to WhatsApp but failed to save to database.',
+          variant: 'destructive',
+        });
+      });
     
     clearCart();
     setCustomerInfo({});
@@ -72,8 +88,8 @@ export function CartDrawer() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col">
-        <SheetHeader>
+      <SheetContent className="w-full sm:max-w-md flex flex-col h-full p-0">
+        <SheetHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <motion.span 
               className="text-2xl"
@@ -106,96 +122,95 @@ export function CartDrawer() {
           </motion.div>
         ) : (
           <>
-            {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-4">
-              <AnimatePresence mode="popLayout">
-                {items.map((item, index) => (
-                  <motion.div 
-                    key={`${item.book.id}-${item.purchaseType}-${item.rentDuration}`} 
-                    className="flex gap-3"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: index * 0.05 }}
-                    layout
-                  >
-                    {/* Book Image */}
+            {/* Scrollable area for items + form */}
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="px-6 py-4 space-y-4">
+                {/* Cart Items */}
+                <AnimatePresence mode="popLayout">
+                  {items.map((item, index) => (
                     <motion.div 
-                      className="w-16 h-20 rounded bg-muted overflow-hidden flex-shrink-0"
-                      whileHover={{ scale: 1.05 }}
+                      key={`${item.book.id}-${item.purchaseType}-${item.rentDuration}`} 
+                      className="flex gap-3"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ delay: index * 0.05 }}
+                      layout
                     >
-                      {item.book.imageUrl ? (
-                        <img
-                          src={item.book.imageUrl}
-                          alt={item.book.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-2xl">📖</span>
+                      {/* Book Image */}
+                      <motion.div 
+                        className="w-16 h-20 rounded bg-muted overflow-hidden flex-shrink-0"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        {item.book.imageUrl ? (
+                          <img
+                            src={item.book.imageUrl}
+                            alt={item.book.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-2xl">📖</span>
+                          </div>
+                        )}
+                      </motion.div>
+
+                      {/* Book Details */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm line-clamp-1">
+                          {item.book.title}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {item.purchaseType === 'buy'
+                            ? 'Buy'
+                            : `Rent - ${item.rentDuration} days`}
+                        </p>
+                        <p className="text-sm font-semibold text-primary mt-1">
+                          Rs {getItemPrice(item)}
+                        </p>
+
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-secondary/20 hover:border-secondary"
+                            onClick={() => updateQuantity(item.book.id, item.quantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm w-6 text-center">{item.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-secondary/20 hover:border-secondary"
+                            onClick={() => updateQuantity(item.book.id, item.quantity + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => removeItem(item.book.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                      )}
-                    </motion.div>
-
-                    {/* Book Details */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm line-clamp-1">
-                        {item.book.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {item.purchaseType === 'buy'
-                          ? 'Buy'
-                          : `Rent - ${item.rentDuration} days`}
-                      </p>
-                      <p className="text-sm font-semibold text-primary mt-1">
-                        Rs {getItemPrice(item)}
-                      </p>
-
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-secondary/20 hover:border-secondary"
-                          onClick={() => updateQuantity(item.book.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-sm w-6 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-secondary/20 hover:border-secondary"
-                          onClick={() => updateQuantity(item.book.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => removeItem(item.book.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
-            <Separator />
+                <Separator />
 
-            {/* Customer Details Form */}
-            <div className="py-4">
-              <CheckoutForm customerInfo={customerInfo} onChange={setCustomerInfo} />
-            </div>
+                {/* Customer Details Form */}
+                <CheckoutForm customerInfo={customerInfo} onChange={setCustomerInfo} />
+              </div>
+            </ScrollArea>
 
-            <Separator />
-
-            {/* Total & Checkout */}
-            <div className="pt-4 space-y-4">
+            {/* Fixed footer - ALWAYS visible */}
+            <div className="flex-shrink-0 border-t border-border px-6 py-4 bg-background space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Total Tribute</span>
                 <motion.span 

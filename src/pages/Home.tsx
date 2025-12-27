@@ -143,10 +143,21 @@ export default function Home() {
               className="flex items-center justify-center gap-3"
               whileHover={{ scale: 1.05 }}
             >
-              <img src={potterLogo} alt="Potter" className="h-6 w-auto" />
+              <img src={potterLogo} alt="Potter" className="h-6 w-auto dark:drop-shadow-[0_0_6px_rgba(255,255,255,0.6)] dark:brightness-110" />
               <span>Potter Book Bank</span>
             </motion.div>
             <p className="mt-2">Affordable books for every adventure.</p>
+            
+            {/* Credits */}
+            <div className="mt-6 pt-4 border-t border-border/50">
+              <p className="text-xs text-muted-foreground/70">
+                Books provided by{' '}
+                <span className="font-semibold text-secondary">Gcians BOOK BANK</span>
+              </p>
+              <p className="text-xs text-muted-foreground/50 mt-1">
+                Thank you for supporting local book communities
+              </p>
+            </div>
           </div>
         </footer>
       </main>
