@@ -33,50 +33,41 @@ export function CartDrawer() {
     }
   };
 
-  const handleCheckout = async () => {
-    setIsSubmitting(true);
+  const handleCheckout = () => {
+    // Open WhatsApp INSTANTLY - don't wait for Firebase
+    openWhatsAppCheckout(items, customerInfo);
     
-    try {
-      // Save order to Firebase
-      const orderData = {
-        items: items.map(item => ({
-          bookId: item.book.id,
-          bookTitle: item.book.title,
-          bookAuthor: item.book.author,
-          bookImageUrl: item.book.imageUrl,
-          quantity: item.quantity,
-          purchaseType: item.purchaseType,
-          rentDuration: item.rentDuration || null,
-          price: getItemPrice(item),
-        })),
-        customerInfo,
-        total: getTotal(),
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, 'orders'), orderData);
-      
-      // Open WhatsApp
-      openWhatsAppCheckout(items, customerInfo);
-      
-      toast({
-        title: 'Order Sent!',
-        description: 'Your order has been recorded. Complete the WhatsApp message to confirm.',
-      });
-      
-      clearCart();
-      setCustomerInfo({});
-      setIsOpen(false);
-    } catch (error) {
-      console.error('Error saving order:', error);
-      // Still open WhatsApp even if save fails
-      openWhatsAppCheckout(items, customerInfo);
-      clearCart();
-      setIsOpen(false);
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast({
+      title: 'Order Sent!',
+      description: 'Complete the WhatsApp message to confirm your order.',
+    });
+    
+    // Save to Firebase in background (non-blocking)
+    const orderData = {
+      items: items.map(item => ({
+        bookId: item.book.id,
+        bookTitle: item.book.title,
+        bookAuthor: item.book.author,
+        bookImageUrl: item.book.imageUrl,
+        quantity: item.quantity,
+        purchaseType: item.purchaseType,
+        rentDuration: item.rentDuration || null,
+        price: getItemPrice(item),
+      })),
+      customerInfo,
+      total: getTotal(),
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    };
+    
+    // Fire-and-forget - don't block UI
+    addDoc(collection(db, 'orders'), orderData).catch(err => 
+      console.error('Background order save failed:', err)
+    );
+    
+    clearCart();
+    setCustomerInfo({});
+    setIsOpen(false);
   };
 
   return (

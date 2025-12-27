@@ -18,26 +18,17 @@ export function Hero() {
       {/* Dark Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/80 via-primary/60 to-background/95" />
       
-      {/* Magical Particles */}
+      {/* Magical Particles - Optimized with CSS animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(30)].map((_, i) => (
-          <motion.div
+        {[...Array(12)].map((_, i) => (
+          <div
             key={i}
-            className="absolute w-1 h-1 bg-secondary rounded-full"
+            className="absolute w-1 h-1 bg-secondary rounded-full animate-float-particle"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [-20, -150],
-              opacity: [0, 1, 0],
-              scale: [0, 1.5, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 3,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: 'easeOut',
+              left: `${10 + (i * 7.5)}%`,
+              top: `${20 + (i % 4) * 20}%`,
+              animationDelay: `${i * 0.4}s`,
+              animationDuration: `${4 + (i % 3)}s`,
             }}
           />
         ))}
