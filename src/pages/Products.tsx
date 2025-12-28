@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
+import { BottomNav } from '@/components/BottomNav';
 import { ProductCard } from '@/components/ProductCard';
 import { useProducts } from '@/hooks/useProducts';
 import { productCategories } from '@/types/product';
@@ -46,7 +47,7 @@ export default function Products() {
   };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative pb-20 md:pb-0">
       {/* Background Image */}
       <div className="fixed inset-0 -z-10">
         <img 
@@ -61,6 +62,7 @@ export default function Products() {
       <div className="relative z-10">
         <Navbar onSearch={handleSearch} />
         <CartDrawer />
+        <BottomNav />
 
         <main className="container mx-auto px-4 py-8">
           {/* Header */}

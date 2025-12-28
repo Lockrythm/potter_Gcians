@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
+import { BottomNav } from '@/components/BottomNav';
 import { BookCard } from '@/components/BookCard';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { VideoLoader } from '@/components/VideoLoader';
@@ -45,7 +46,7 @@ export default function Library() {
   };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative pb-20 md:pb-0">
       {/* Background Image */}
       <div className="fixed inset-0 -z-10">
         <img 
@@ -60,6 +61,7 @@ export default function Library() {
       <div className="relative z-10">
         <Navbar onSearch={handleSearch} />
         <CartDrawer />
+        <BottomNav />
 
         <main className="container mx-auto px-4 py-8">
           {/* Header */}

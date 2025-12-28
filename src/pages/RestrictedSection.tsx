@@ -7,9 +7,11 @@ import { useAllBooks } from '@/hooks/useBooks';
 import { useAllProducts } from '@/hooks/useAllProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { useOrders } from '@/hooks/useOrders';
+import { useAllExplorePosts } from '@/hooks/useExplorePosts';
 import { Book, BookCondition, BookType, Category } from '@/types/book';
 import { Product, productCategories } from '@/types/product';
 import { Order } from '@/types/order';
+import { ExplorePost, ExplorePostType, ExplorePostStatus, explorePostTypes } from '@/types/explore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen, Home, ArrowLeft, ShoppingBag, ChevronDown, ChevronUp, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen, Home, ArrowLeft, ShoppingBag, ChevronDown, ChevronUp, Package, Compass, Check, X } from 'lucide-react';
 import potterLogo from '@/assets/potter-logo.png';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'potter2024';
@@ -92,11 +94,26 @@ export default function RestrictedSection() {
   // Category management
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  
+  // Explore post management
+  const [editingPost, setEditingPost] = useState<ExplorePost | null>(null);
+  const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  const [postFormData, setPostFormData] = useState({
+    title: '',
+    description: '',
+    price: 0,
+    type: 'product' as ExplorePostType,
+    authorName: '',
+    authorContact: '',
+    status: 'pending' as ExplorePostStatus,
+    adminNotes: '',
+  });
 
   const { books, loading: booksLoading, error: booksError } = useAllBooks();
   const { products, loading: productsLoading, error: productsError } = useAllProducts();
   const { categories, loading: categoriesLoading } = useCategories();
   const { orders, loading: ordersLoading, updateOrderStatus } = useOrders();
+  const { posts: explorePosts, loading: postsLoading, error: postsError } = useAllExplorePosts();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -338,6 +355,68 @@ export default function RestrictedSection() {
     }
   };
 
+  // ============== Explore Post CRUD ==============
+  const openEditPostDialog = (post: ExplorePost) => {
+    setEditingPost(post);
+    setPostFormData({
+      title: post.title,
+      description: post.description,
+      price: post.price,
+      type: post.type,
+      authorName: post.authorName,
+      authorContact: post.authorContact,
+      status: post.status,
+      adminNotes: post.adminNotes || '',
+    });
+    setIsPostDialogOpen(true);
+  };
+
+  const handlePostSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPost) return;
+
+    try {
+      await updateDoc(doc(db, 'explore_posts', editingPost.id), {
+        ...postFormData,
+        updatedAt: serverTimestamp(),
+      });
+      toast({ title: 'Post Updated', description: `"${postFormData.title}" has been updated.` });
+      setIsPostDialogOpen(false);
+      setEditingPost(null);
+    } catch (err) {
+      console.error('Error updating post:', err);
+      toast({ title: 'Error', description: 'Failed to update post.', variant: 'destructive' });
+    }
+  };
+
+  const handlePostDelete = async (post: ExplorePost) => {
+    if (!confirm(`Are you sure you want to delete "${post.title}"?`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'explore_posts', post.id));
+      toast({ title: 'Post Deleted', description: `"${post.title}" has been removed.` });
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      toast({ title: 'Error', description: 'Failed to delete post.', variant: 'destructive' });
+    }
+  };
+
+  const handlePostStatusChange = async (post: ExplorePost, newStatus: ExplorePostStatus) => {
+    try {
+      await updateDoc(doc(db, 'explore_posts', post.id), { 
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+      toast({ 
+        title: newStatus === 'approved' ? 'Post Approved!' : newStatus === 'rejected' ? 'Post Rejected' : 'Status Updated',
+        description: `"${post.title}" is now ${newStatus}.`,
+      });
+    } catch (err) {
+      console.error('Error updating post status:', err);
+      toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
+    }
+  };
+
   // Password Gate
   if (!isAuthenticated) {
     return (
@@ -437,6 +516,16 @@ export default function RestrictedSection() {
                 {orders.filter(o => o.status === 'pending').length > 0 && (
                   <Badge variant="secondary" className="ml-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-[10px] sm:text-xs">
                     {orders.filter(o => o.status === 'pending').length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="explore" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                <Compass className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Explore</span>
+                <span className="xs:hidden">🧭</span>
+                {explorePosts.filter(p => p.status === 'pending').length > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-[10px] sm:text-xs">
+                    {explorePosts.filter(p => p.status === 'pending').length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -856,7 +945,153 @@ export default function RestrictedSection() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Explore Tab */}
+          <TabsContent value="explore" className="animate-fade-in">
+            <Card className="border-border/50">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <Compass className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />
+                  Community Posts
+                </CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Review and approve posts submitted by the community
+                </p>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                {postsLoading ? (
+                  <p className="text-muted-foreground py-8 text-center text-sm">Loading posts...</p>
+                ) : postsError ? (
+                  <p className="text-destructive py-8 text-center text-sm">{postsError}</p>
+                ) : explorePosts.length === 0 ? (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    No community posts yet.
+                  </p>
+                ) : (
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[600px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Post</TableHead>
+                            <TableHead className="hidden sm:table-cell">Type</TableHead>
+                            <TableHead>Author</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {explorePosts.map((post) => (
+                            <TableRow key={post.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-10 h-10 bg-muted rounded overflow-hidden flex-shrink-0">
+                                    {post.imageUrl ? (
+                                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-sm">
+                                        {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-xs sm:text-sm line-clamp-1">{post.title}</p>
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground">Rs {post.price}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                <Badge variant="outline" className="capitalize text-xs">{post.type}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs">
+                                  <p className="font-medium">{post.authorName}</p>
+                                  <p className="text-muted-foreground">{post.authorContact}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={post.status === 'approved' ? 'default' : post.status === 'rejected' ? 'destructive' : 'secondary'}
+                                  className="capitalize text-xs"
+                                >
+                                  {post.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {post.status === 'pending' && (
+                                    <>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => handlePostStatusChange(post, 'approved')}>
+                                        <Check className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostStatusChange(post, 'rejected')}>
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPostDialog(post)}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostDelete(post)}>
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Edit Explore Post Dialog */}
+        <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto mx-4">
+            <DialogHeader>
+              <DialogTitle>Edit Post</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handlePostSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Title</Label>
+                <Input value={postFormData.title} onChange={(e) => setPostFormData({ ...postFormData, title: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Description</Label>
+                <Textarea value={postFormData.description} onChange={(e) => setPostFormData({ ...postFormData, description: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Price (Rs)</Label>
+                  <Input type="number" value={postFormData.price} onChange={(e) => setPostFormData({ ...postFormData, price: Number(e.target.value) })} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Status</Label>
+                  <Select value={postFormData.status} onValueChange={(v: ExplorePostStatus) => setPostFormData({ ...postFormData, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Admin Notes</Label>
+                <Textarea value={postFormData.adminNotes} onChange={(e) => setPostFormData({ ...postFormData, adminNotes: e.target.value })} placeholder="Internal notes..." />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsPostDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" className="bg-secondary text-secondary-foreground">Save Changes</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Add/Edit Book Dialog */}
         <Dialog open={isBookDialogOpen} onOpenChange={setIsBookDialogOpen}>
