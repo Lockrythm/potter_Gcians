@@ -62,10 +62,17 @@ ${typeEmoji} Type: ${data.type.toUpperCase()}
 Please review this post in the admin panel.`;
   };
 
-  const openWhatsAppNotification = (data: typeof formData) => {
+  const buildWhatsAppNotificationUrl = (data: typeof formData) => {
     const message = generatePostWhatsAppMessage(data);
     const encodedMessage = encodeURIComponent(message);
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+  };
+
+  const openWhatsAppNotification = (url: string, win?: Window | null) => {
+    if (win && !win.closed) {
+      win.location.href = url;
+      return;
+    }
     window.open(url, '_blank');
   };
 
@@ -86,6 +93,10 @@ Please review this post in the admin panel.`;
     }
 
     setIsSubmitting(true);
+
+    // Open WhatsApp window synchronously (avoids popup blockers)
+    const waUrl = buildWhatsAppNotificationUrl(formData);
+    const waWindow = window.open('', '_blank');
 
     try {
       let imageUrl = '';
@@ -110,7 +121,7 @@ Please review this post in the admin panel.`;
       await addDoc(collection(db, 'explore_posts'), postData);
 
       // Send WhatsApp notification
-      openWhatsAppNotification(formData);
+      openWhatsAppNotification(waUrl, waWindow);
 
       toast({
         title: 'Post Submitted!',
@@ -128,6 +139,7 @@ Please review this post in the admin panel.`;
       setImageFile(null);
       setIsDialogOpen(false);
     } catch (err) {
+      waWindow?.close();
       console.error('Error submitting post:', err);
       toast({ title: 'Error', description: 'Failed to submit post. Please try again.', variant: 'destructive' });
     } finally {
