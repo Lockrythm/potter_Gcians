@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Loader2, Compass, BookOpen, Package, Briefcase, Sparkles } from 'lucide-react';
 
+const WHATSAPP_NUMBER = '923126203644';
+
 export default function Explore() {
   const { posts, loading, error } = useExplorePosts('approved');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -42,10 +44,44 @@ export default function Explore() {
     }
   };
 
+  const generatePostWhatsAppMessage = (data: typeof formData): string => {
+    const typeEmoji = data.type === 'book' ? '📚' : data.type === 'product' ? '📦' : '💼';
+    return `🆕 New Explore Post Submitted!
+
+${typeEmoji} Type: ${data.type.toUpperCase()}
+📝 Title: ${data.title}
+💬 Description: ${data.description || 'No description'}
+💰 Price: Rs ${data.price}
+
+👤 Submitted by: ${data.authorName}
+📞 Contact: ${data.authorContact}
+
+⏳ Status: Pending Approval
+🕐 Submitted at: ${new Date().toLocaleString()}
+
+Please review this post in the admin panel.`;
+  };
+
+  const openWhatsAppNotification = (data: typeof formData) => {
+    const message = generatePostWhatsAppMessage(data);
+    const encodedMessage = encodeURIComponent(message);
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    window.open(url, '_blank');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.authorName || !formData.authorContact) {
-      toast({ title: 'Missing fields', description: 'Please fill in all required fields.', variant: 'destructive' });
+    
+    if (!formData.title.trim()) {
+      toast({ title: 'Missing title', description: 'Please enter a title for your post.', variant: 'destructive' });
+      return;
+    }
+    if (!formData.authorName.trim()) {
+      toast({ title: 'Missing name', description: 'Please enter your name.', variant: 'destructive' });
+      return;
+    }
+    if (!formData.authorContact.trim()) {
+      toast({ title: 'Missing contact', description: 'Please enter your contact information.', variant: 'destructive' });
       return;
     }
 
@@ -59,12 +95,22 @@ export default function Explore() {
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
-      await addDoc(collection(db, 'explore_posts'), {
-        ...formData,
+      const postData = {
+        type: formData.type,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        price: formData.price || 0,
+        authorName: formData.authorName.trim(),
+        authorContact: formData.authorContact.trim(),
         imageUrl,
         status: 'pending',
         createdAt: serverTimestamp(),
-      });
+      };
+
+      await addDoc(collection(db, 'explore_posts'), postData);
+
+      // Send WhatsApp notification
+      openWhatsAppNotification(formData);
 
       toast({
         title: 'Post Submitted!',

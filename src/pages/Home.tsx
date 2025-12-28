@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { CartDrawer } from '@/components/CartDrawer';
+import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BookOpen, Clock, MessageCircle, Sparkles } from 'lucide-react';
@@ -33,9 +34,10 @@ const FEATURES = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
       <CartDrawer />
+      <BottomNav />
 
       <main>
         <Hero />
