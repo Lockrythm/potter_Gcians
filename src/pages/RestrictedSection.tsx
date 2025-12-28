@@ -551,79 +551,133 @@ export default function RestrictedSection() {
             )}
 
             {!booksLoading && !booksError && (
-              <Card className="border-border/50">
-                <CardContent className="p-0">
-                  <ScrollArea className="w-full">
-                    <div className="min-w-[600px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Book</TableHead>
-                            <TableHead className="hidden sm:table-cell">Category</TableHead>
-                            <TableHead className="hidden md:table-cell">Type</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {books.map((book) => (
-                            <TableRow key={book.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className="w-8 h-12 sm:w-10 sm:h-14 bg-muted rounded overflow-hidden flex-shrink-0">
-                                    {book.imageUrl ? (
-                                      <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-sm">📖</div>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-xs sm:text-sm line-clamp-1">{book.title}</p>
-                                    <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{book.author}</p>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <Badge variant="outline" className="border-secondary/30 text-xs">
-                                  {book.category}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                <Badge variant="outline" className="capitalize text-xs">{book.type}</Badge>
-                              </TableCell>
-                              <TableCell className="text-xs sm:text-sm">Rs {book.buyPrice}</TableCell>
-                              <TableCell>
-                                <Switch
-                                  checked={book.isAvailable}
-                                  onCheckedChange={() => toggleBookAvailability(book)}
-                                />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openEditBookDialog(book)}>
-                                    <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive" onClick={() => handleBookDelete(book)}>
-                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {books.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                No books yet. Add your first book!
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+              <>
+                {/* Mobile Card View */}
+                <div className="space-y-3 md:hidden">
+                  {books.map((book) => (
+                    <Card key={book.id} className="border-border/50">
+                      <CardContent className="p-3">
+                        <div className="flex gap-3">
+                          <div className="w-14 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
+                            {book.imageUrl ? (
+                              <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg">📖</div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm line-clamp-1">{book.title}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{book.author}</p>
+                              </div>
+                              <Switch
+                                checked={book.isAvailable}
+                                onCheckedChange={() => toggleBookAvailability(book)}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <Badge variant="outline" className="text-[10px] border-secondary/30">{book.category}</Badge>
+                              <Badge variant="outline" className="text-[10px] capitalize">{book.type}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="font-semibold text-sm text-primary">Rs {book.buyPrice}</span>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditBookDialog(book)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleBookDelete(book)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {books.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No books yet. Add your first book!
                     </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <Card className="border-border/50 hidden md:block">
+                  <CardContent className="p-0">
+                    <ScrollArea className="w-full">
+                      <div className="min-w-[600px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Book</TableHead>
+                              <TableHead>Category</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {books.map((book) => (
+                              <TableRow key={book.id}>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
+                                      {book.imageUrl ? (
+                                        <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-sm">📖</div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm line-clamp-1">{book.title}</p>
+                                      <p className="text-xs text-muted-foreground line-clamp-1">{book.author}</p>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="border-secondary/30 text-xs">
+                                    {book.category}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="capitalize text-xs">{book.type}</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">Rs {book.buyPrice}</TableCell>
+                                <TableCell>
+                                  <Switch
+                                    checked={book.isAvailable}
+                                    onCheckedChange={() => toggleBookAvailability(book)}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditBookDialog(book)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleBookDelete(book)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {books.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                  No books yet. Add your first book!
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </>
             )}
           </TabsContent>
 
@@ -646,75 +700,126 @@ export default function RestrictedSection() {
             )}
 
             {!productsLoading && !productsError && (
-              <Card className="border-border/50">
-                <CardContent className="p-0">
-                  <ScrollArea className="w-full">
-                    <div className="min-w-[500px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Product</TableHead>
-                            <TableHead className="hidden sm:table-cell">Category</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {products.map((product) => (
-                            <TableRow key={product.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-muted rounded overflow-hidden flex-shrink-0">
-                                    {product.imageUrl ? (
-                                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-sm">📦</div>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-xs sm:text-sm line-clamp-1">{product.name}</p>
-                                    <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{product.description}</p>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <Badge variant="outline" className="border-secondary/30 text-xs">
-                                  {product.category}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-xs sm:text-sm">Rs {product.price}</TableCell>
-                              <TableCell>
-                                <Switch
-                                  checked={product.isAvailable}
-                                  onCheckedChange={() => toggleProductAvailability(product)}
-                                />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openEditProductDialog(product)}>
-                                    <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive" onClick={() => handleProductDelete(product)}>
-                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {products.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                No products yet. Add your first product!
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+              <>
+                {/* Mobile Card View */}
+                <div className="space-y-3 md:hidden">
+                  {products.map((product) => (
+                    <Card key={product.id} className="border-border/50">
+                      <CardContent className="p-3">
+                        <div className="flex gap-3">
+                          <div className="w-14 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg">📦</div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm line-clamp-1">{product.name}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>
+                              </div>
+                              <Switch
+                                checked={product.isAvailable}
+                                onCheckedChange={() => toggleProductAvailability(product)}
+                              />
+                            </div>
+                            <Badge variant="outline" className="text-[10px] border-secondary/30 mt-1">{product.category}</Badge>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="font-semibold text-sm text-primary">Rs {product.price}</span>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditProductDialog(product)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleProductDelete(product)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {products.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No products yet. Add your first product!
                     </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <Card className="border-border/50 hidden md:block">
+                  <CardContent className="p-0">
+                    <ScrollArea className="w-full">
+                      <div className="min-w-[500px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Product</TableHead>
+                              <TableHead>Category</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {products.map((product) => (
+                              <TableRow key={product.id}>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-muted rounded overflow-hidden flex-shrink-0">
+                                      {product.imageUrl ? (
+                                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-sm">📦</div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm line-clamp-1">{product.name}</p>
+                                      <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="border-secondary/30 text-xs">
+                                    {product.category}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">Rs {product.price}</TableCell>
+                                <TableCell>
+                                  <Switch
+                                    checked={product.isAvailable}
+                                    onCheckedChange={() => toggleProductAvailability(product)}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProductDialog(product)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleProductDelete(product)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {products.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                  No products yet. Add your first product!
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </>
             )}
           </TabsContent>
 
@@ -968,81 +1073,144 @@ export default function RestrictedSection() {
                     No community posts yet.
                   </p>
                 ) : (
-                  <ScrollArea className="w-full">
-                    <div className="min-w-[600px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Post</TableHead>
-                            <TableHead className="hidden sm:table-cell">Type</TableHead>
-                            <TableHead>Author</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {explorePosts.map((post) => (
-                            <TableRow key={post.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-10 h-10 bg-muted rounded overflow-hidden flex-shrink-0">
-                                    {post.imageUrl ? (
-                                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-sm">
-                                        {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
-                                      </div>
-                                    )}
+                  <>
+                    {/* Mobile Card View */}
+                    <div className="space-y-3 md:hidden">
+                      {explorePosts.map((post) => (
+                        <Card key={post.id} className="border-border/50">
+                          <CardContent className="p-3">
+                            <div className="flex gap-3">
+                              <div className="w-14 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
+                                {post.imageUrl ? (
+                                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-lg">
+                                    {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
                                   </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
-                                    <p className="font-medium text-xs sm:text-sm line-clamp-1">{post.title}</p>
-                                    <p className="text-[10px] sm:text-xs text-muted-foreground">Rs {post.price}</p>
+                                    <p className="font-medium text-sm line-clamp-1">{post.title}</p>
+                                    <p className="text-xs text-muted-foreground">{post.authorName}</p>
+                                  </div>
+                                  <Badge
+                                    variant={post.status === 'approved' ? 'default' : post.status === 'rejected' ? 'destructive' : 'secondary'}
+                                    className="capitalize text-[10px] shrink-0"
+                                  >
+                                    {post.status}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="outline" className="text-[10px] capitalize">{post.type}</Badge>
+                                  <span className="text-xs text-primary font-medium">Rs {post.price}</span>
+                                </div>
+                                <div className="flex items-center justify-between mt-2">
+                                  <p className="text-[10px] text-muted-foreground">{post.authorContact}</p>
+                                  <div className="flex gap-0.5">
+                                    {post.status === 'pending' && (
+                                      <>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => handlePostStatusChange(post, 'approved')}>
+                                          <Check className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostStatusChange(post, 'rejected')}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPostDialog(post)}>
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostDelete(post)}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
                                 </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <Badge variant="outline" className="capitalize text-xs">{post.type}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-xs">
-                                  <p className="font-medium">{post.authorName}</p>
-                                  <p className="text-muted-foreground">{post.authorContact}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={post.status === 'approved' ? 'default' : post.status === 'rejected' ? 'destructive' : 'secondary'}
-                                  className="capitalize text-xs"
-                                >
-                                  {post.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  {post.status === 'pending' && (
-                                    <>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => handlePostStatusChange(post, 'approved')}>
-                                        <Check className="h-3 w-3" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostStatusChange(post, 'rejected')}>
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </>
-                                  )}
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPostDialog(post)}>
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostDelete(post)}>
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </ScrollArea>
+
+                    {/* Desktop Table View */}
+                    <ScrollArea className="w-full hidden md:block">
+                      <div className="min-w-[600px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Post</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Author</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {explorePosts.map((post) => (
+                              <TableRow key={post.id}>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-10 h-10 bg-muted rounded overflow-hidden flex-shrink-0">
+                                      {post.imageUrl ? (
+                                        <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-sm">
+                                          {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm line-clamp-1">{post.title}</p>
+                                      <p className="text-xs text-muted-foreground">Rs {post.price}</p>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="capitalize text-xs">{post.type}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-xs">
+                                    <p className="font-medium">{post.authorName}</p>
+                                    <p className="text-muted-foreground">{post.authorContact}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={post.status === 'approved' ? 'default' : post.status === 'rejected' ? 'destructive' : 'secondary'}
+                                    className="capitalize text-xs"
+                                  >
+                                    {post.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                    {post.status === 'pending' && (
+                                      <>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => handlePostStatusChange(post, 'approved')}>
+                                          <Check className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostStatusChange(post, 'rejected')}>
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPostDialog(post)}>
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handlePostDelete(post)}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </>
                 )}
               </CardContent>
             </Card>
