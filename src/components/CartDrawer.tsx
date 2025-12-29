@@ -14,14 +14,26 @@ import { CustomerInfo } from '@/types/order';
 import { toast } from '@/hooks/use-toast';
 import { CartItem } from '@/types/book';
 
+const WHATSAPP_NUMBER = '923126203644';
+
+const categoryEmojis: Record<string, string> = {
+  books: '📚',
+  confessions: '🤫',
+  help: '🆘',
+  notices: '📢',
+  general: '💬',
+};
+
 export function CartDrawer() {
   const { 
     items, 
     productItems,
+    exploreItems,
     isOpen, 
     setIsOpen, 
     removeItem, 
     removeProductItem,
+    removeExploreItem,
     updateQuantity, 
     updateProductQuantity,
     getTotal, 
@@ -47,67 +59,90 @@ export function CartDrawer() {
   };
 
   const handleCheckout = () => {
-    // Open WhatsApp INSTANTLY - don't wait for Firebase
-    openWhatsAppCheckout(items, productItems, customerInfo);
+    // Build WhatsApp message including explore posts
+    let message = '';
+    
+    // Add explore posts to message
+    if (exploreItems.length > 0) {
+      message += '🦉 *NEW EXPLORE POSTS*\n\n';
+      exploreItems.forEach((item, idx) => {
+        const emoji = categoryEmojis[item.category] || '💬';
+        const contentPreview = item.content.length > 80 ? item.content.substring(0, 80) + '...' : item.content;
+        message += `${idx + 1}. ${emoji} *${item.category.toUpperCase()}*\n`;
+        message += `   Author: ${item.authorName}\n`;
+        message += `   "${contentPreview}"\n`;
+        message += `   Status: ⏳ Pending Approval\n\n`;
+      });
+    }
+    
+    // Add books/products if any
+    if (items.length > 0 || productItems.length > 0) {
+      openWhatsAppCheckout(items, productItems, customerInfo);
+    } else if (exploreItems.length > 0) {
+      // Only explore posts - open WhatsApp with explore message
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
+    }
     
     toast({
       title: 'Order Sent!',
       description: 'Complete the WhatsApp message to confirm your order.',
     });
     
-    // Save to Firebase with proper date/time
-    const now = new Date();
-    const orderData = {
-      items: items.map(item => ({
-        type: 'book',
-        bookId: item.book.id,
-        bookTitle: item.book.title,
-        bookAuthor: item.book.author,
-        bookImageUrl: item.book.imageUrl,
-        quantity: item.quantity,
-        purchaseType: item.purchaseType,
-        rentDuration: item.rentDuration || null,
-        price: getBookItemPrice(item),
-      })),
-      productItems: productItems.map(item => ({
-        type: 'product',
-        productId: item.product.id,
-        productName: item.product.name,
-        productImageUrl: item.product.imageUrl,
-        quantity: item.quantity,
-        price: item.product.price,
-      })),
-      customerInfo,
-      total: getTotal(),
-      status: 'pending',
-      orderDate: now.toISOString(),
-      orderDateFormatted: now.toLocaleString('en-PK', {
-        dateStyle: 'full',
-        timeStyle: 'short',
-      }),
-      createdAt: serverTimestamp(),
-    };
-    
-    // Save to Firebase with proper error handling
-    addDoc(collection(db, 'orders'), orderData)
-      .then((docRef) => {
-        console.log('Order saved with ID:', docRef.id);
-      })
-      .catch(err => {
-        console.error('Order save failed:', err);
-        toast({
-          title: 'Warning',
-          description: 'Order sent to WhatsApp but failed to save to database.',
-          variant: 'destructive',
+    // Save to Firebase with proper date/time (only if has books/products)
+    if (items.length > 0 || productItems.length > 0) {
+      const now = new Date();
+      const orderData = {
+        items: items.map(item => ({
+          type: 'book',
+          bookId: item.book.id,
+          bookTitle: item.book.title,
+          bookAuthor: item.book.author,
+          bookImageUrl: item.book.imageUrl,
+          quantity: item.quantity,
+          purchaseType: item.purchaseType,
+          rentDuration: item.rentDuration || null,
+          price: getBookItemPrice(item),
+        })),
+        productItems: productItems.map(item => ({
+          type: 'product',
+          productId: item.product.id,
+          productName: item.product.name,
+          productImageUrl: item.product.imageUrl,
+          quantity: item.quantity,
+          price: item.product.price,
+        })),
+        customerInfo,
+        total: getTotal(),
+        status: 'pending',
+        orderDate: now.toISOString(),
+        orderDateFormatted: now.toLocaleString('en-PK', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+        }),
+        createdAt: serverTimestamp(),
+      };
+      
+      addDoc(collection(db, 'orders'), orderData)
+        .then((docRef) => {
+          console.log('Order saved with ID:', docRef.id);
+        })
+        .catch(err => {
+          console.error('Order save failed:', err);
+          toast({
+            title: 'Warning',
+            description: 'Order sent to WhatsApp but failed to save to database.',
+            variant: 'destructive',
+          });
         });
-      });
+    }
     
     clearCart();
     setCustomerInfo({});
     setIsOpen(false);
   };
 
-  const hasItems = items.length > 0 || productItems.length > 0;
+  const hasItems = items.length > 0 || productItems.length > 0 || exploreItems.length > 0;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -140,7 +175,7 @@ export function CartDrawer() {
             </motion.span>
             <p className="text-muted-foreground">Your trunk is empty</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Add some books or products
+              Add some books, products, or posts
             </p>
           </motion.div>
         ) : (
@@ -305,6 +340,56 @@ export function CartDrawer() {
                               </Button>
                             </div>
                           </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </>
+                )}
+
+                {/* Explore Post Items */}
+                {exploreItems.length > 0 && (
+                  <>
+                    {(items.length > 0 || productItems.length > 0) && <Separator />}
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">✨ Explore Posts</p>
+                    <AnimatePresence mode="popLayout">
+                      {exploreItems.map((item, index) => (
+                        <motion.div 
+                          key={item.id} 
+                          className="flex gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ delay: index * 0.05 }}
+                          layout
+                        >
+                          {/* Category Icon */}
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-lg">{categoryEmojis[item.category] || '💬'}</span>
+                          </div>
+
+                          {/* Post Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium uppercase text-primary">{item.category}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600">⏳ Pending</span>
+                            </div>
+                            <p className="text-sm line-clamp-2 text-foreground">
+                              {item.content}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              By: {item.authorName}
+                            </p>
+                          </div>
+
+                          {/* Remove Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => removeExploreItem(item.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </motion.div>
                       ))}
                     </AnimatePresence>

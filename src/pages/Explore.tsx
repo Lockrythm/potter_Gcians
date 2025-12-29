@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useExplorePosts } from '@/hooks/useExplorePosts';
-import { ExplorePost, ExploreCategory, exploreCategories } from '@/types/explore';
+import { ExploreCategory, exploreCategories } from '@/types/explore';
 import { ExplorePostCard } from '@/components/ExplorePostCard';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
 import { BottomNav } from '@/components/BottomNav';
+import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,7 @@ const categoryConfig: Record<ExploreCategory, { icon: typeof BookOpen; label: st
 
 export default function Explore() {
   const { posts, loading, error } = useExplorePosts('approved');
+  const { addExploreItem } = useCart();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<ExploreCategory | 'all'>('all');
@@ -84,6 +86,7 @@ Please review this post in the admin panel.`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (!formData.content.trim()) {
       toast({ title: 'Missing content', description: 'Please write something to post.', variant: 'destructive' });
@@ -100,15 +103,14 @@ Please review this post in the admin panel.`;
 
     setIsSubmitting(true);
 
-    // Open WhatsApp window synchronously (avoids popup blockers)
-    const waUrl = buildWhatsAppNotificationUrl(formData);
-    const waWindow = window.open('', '_blank');
-
     try {
+      const authorName = formData.isAnonymous ? 'Anonymous' : formData.authorName.trim();
+      
+      // TASK 1: Save to Firestore (background, for admin approval)
       const postData = {
         category: formData.category,
         content: formData.content.trim(),
-        authorName: formData.isAnonymous ? 'Anonymous' : formData.authorName.trim(),
+        authorName: authorName,
         isAnonymous: formData.isAnonymous,
         status: 'pending',
         createdAt: serverTimestamp(),
@@ -116,14 +118,20 @@ Please review this post in the admin panel.`;
 
       await addDoc(collection(db, 'explore_posts'), postData);
 
-      // Send WhatsApp notification
-      openWhatsAppNotification(waUrl, waWindow);
-
-      toast({
-        title: '🦉 OWL Sent!',
-        description: 'Your post is pending admin approval. An OWL notification has been sent!',
+      // TASK 2: Add to Owl Trunk (cart) immediately
+      addExploreItem({
+        category: formData.category,
+        content: formData.content.trim(),
+        authorName: authorName,
+        status: 'pending',
       });
 
+      toast({
+        title: '✅ Post Submitted!',
+        description: 'Your post is pending admin approval. Added to Owl Trunk!',
+      });
+
+      // Clear form and close dialog
       setFormData({
         category: 'general',
         content: '',
@@ -132,7 +140,6 @@ Please review this post in the admin panel.`;
       });
       setIsDialogOpen(false);
     } catch (err) {
-      waWindow?.close();
       console.error('Error submitting post:', err);
       toast({ 
         title: 'Submission Error', 

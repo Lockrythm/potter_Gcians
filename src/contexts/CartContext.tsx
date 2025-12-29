@@ -1,14 +1,27 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { CartItem, Book, RentDuration } from '@/types/book';
 import { Product, ProductCartItem } from '@/types/product';
+import { ExploreCategory } from '@/types/explore';
+
+export interface ExploreCartItem {
+  id: string;
+  category: ExploreCategory;
+  content: string;
+  authorName: string;
+  status: 'pending';
+  createdAt: Date;
+}
 
 interface CartContextType {
   items: CartItem[];
   productItems: ProductCartItem[];
+  exploreItems: ExploreCartItem[];
   addItem: (book: Book, purchaseType: 'buy' | 'rent', rentDuration?: RentDuration) => void;
   addProductItem: (product: Product) => void;
+  addExploreItem: (item: Omit<ExploreCartItem, 'id' | 'createdAt'>) => void;
   removeItem: (bookId: string) => void;
   removeProductItem: (productId: string) => void;
+  removeExploreItem: (itemId: string) => void;
   updateQuantity: (bookId: string, quantity: number) => void;
   updateProductQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -22,6 +35,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'potter-cart';
 const PRODUCT_CART_STORAGE_KEY = 'potter-product-cart';
+const EXPLORE_CART_STORAGE_KEY = 'potter-explore-cart';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
@@ -31,6 +45,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   const [productItems, setProductItems] = useState<ProductCartItem[]>(() => {
     const stored = localStorage.getItem(PRODUCT_CART_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const [exploreItems, setExploreItems] = useState<ExploreCartItem[]>(() => {
+    const stored = localStorage.getItem(EXPLORE_CART_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   });
   
@@ -43,6 +62,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(PRODUCT_CART_STORAGE_KEY, JSON.stringify(productItems));
   }, [productItems]);
+
+  useEffect(() => {
+    localStorage.setItem(EXPLORE_CART_STORAGE_KEY, JSON.stringify(exploreItems));
+  }, [exploreItems]);
 
   const addItem = (book: Book, purchaseType: 'buy' | 'rent', rentDuration?: RentDuration) => {
     setItems((prev) => {
@@ -87,6 +110,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setProductItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
+  const addExploreItem = (item: Omit<ExploreCartItem, 'id' | 'createdAt'>) => {
+    const newItem: ExploreCartItem = {
+      ...item,
+      id: `explore-${Date.now()}`,
+      createdAt: new Date(),
+    };
+    setExploreItems((prev) => [...prev, newItem]);
+    setIsOpen(true);
+  };
+
+  const removeExploreItem = (itemId: string) => {
+    setExploreItems((prev) => prev.filter((item) => item.id !== itemId));
+  };
+
   const updateQuantity = (bookId: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(bookId);
@@ -114,6 +151,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => {
     setItems([]);
     setProductItems([]);
+    setExploreItems([]);
   };
 
   const getBookItemPrice = (item: CartItem) => {
@@ -139,17 +177,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const itemCount = items.reduce((count, item) => count + item.quantity, 0) + 
-                    productItems.reduce((count, item) => count + item.quantity, 0);
+                    productItems.reduce((count, item) => count + item.quantity, 0) +
+                    exploreItems.length;
 
   return (
     <CartContext.Provider
       value={{
         items,
         productItems,
+        exploreItems,
         addItem,
         addProductItem,
+        addExploreItem,
         removeItem,
         removeProductItem,
+        removeExploreItem,
         updateQuantity,
         updateProductQuantity,
         clearCart,
