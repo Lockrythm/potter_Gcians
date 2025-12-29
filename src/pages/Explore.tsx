@@ -19,9 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
+import { friendlyFirestoreError } from '@/lib/firebase-errors';
 import { Plus, Loader2, Compass, BookOpen, MessageSquare, HelpCircle, Bell, MessagesSquare, Sparkles, ImageOff } from 'lucide-react';
 
-const WHATSAPP_NUMBER = '923126203644';
 const MAX_CONTENT_LENGTH = 400;
 
 const categoryConfig: Record<ExploreCategory, { icon: typeof BookOpen; label: string }> = {
@@ -38,7 +38,7 @@ export default function Explore() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<ExploreCategory | 'all'>('all');
-  
+
   const [formData, setFormData] = useState({
     category: 'general' as ExploreCategory,
     content: '',
@@ -46,48 +46,10 @@ export default function Explore() {
     isAnonymous: false,
   });
 
-  const generatePostWhatsAppMessage = (data: typeof formData): string => {
-    const categoryEmoji = {
-      books: '📚',
-      confessions: '🤫',
-      help: '🆘',
-      notices: '📢',
-      general: '💬',
-    };
-    
-    const displayName = data.isAnonymous ? 'Anonymous' : data.authorName;
-    const contentPreview = data.content.length > 100 ? data.content.substring(0, 100) + '...' : data.content;
-    
-    return `🆕 New Explore Post Submitted!
-
-${categoryEmoji[data.category]} Category: ${data.category.toUpperCase()}
-💬 Content: ${contentPreview}
-👤 Author: ${displayName}
-
-⏳ Status: Pending Approval
-🕐 Submitted at: ${new Date().toLocaleString()}
-
-Please review this post in the admin panel.`;
-  };
-
-  const buildWhatsAppNotificationUrl = (data: typeof formData) => {
-    const message = generatePostWhatsAppMessage(data);
-    const encodedMessage = encodeURIComponent(message);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-  };
-
-  const openWhatsAppNotification = (url: string, win?: Window | null) => {
-    if (win && !win.closed) {
-      win.location.href = url;
-      return;
-    }
-    window.open(url, '_blank');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!formData.content.trim()) {
       toast({ title: 'Missing content', description: 'Please write something to post.', variant: 'destructive' });
       return;
@@ -105,12 +67,12 @@ Please review this post in the admin panel.`;
 
     try {
       const authorName = formData.isAnonymous ? 'Anonymous' : formData.authorName.trim();
-      
+
       // TASK 1: Save to Firestore (background, for admin approval)
       const postData = {
         category: formData.category,
         content: formData.content.trim(),
-        authorName: authorName,
+        authorName,
         isAnonymous: formData.isAnonymous,
         status: 'pending',
         createdAt: serverTimestamp(),
@@ -122,13 +84,13 @@ Please review this post in the admin panel.`;
       addExploreItem({
         category: formData.category,
         content: formData.content.trim(),
-        authorName: authorName,
+        authorName,
         status: 'pending',
       });
 
       toast({
-        title: '✅ Post Submitted!',
-        description: 'Your post is pending admin approval. Added to Owl Trunk!',
+        title: 'Post submitted successfully',
+        description: 'Pending admin approval.',
       });
 
       // Clear form and close dialog
@@ -141,23 +103,21 @@ Please review this post in the admin panel.`;
       setIsDialogOpen(false);
     } catch (err) {
       console.error('Error submitting post:', err);
-      toast({ 
-        title: 'Submission Error', 
-        description: err instanceof Error ? err.message : 'Failed to submit post. Please try again.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Submission Error',
+        description: friendlyFirestoreError(err, 'Failed to submit post. Please try again.'),
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredPosts = activeFilter === 'all' 
-    ? posts 
-    : posts.filter(post => post.category === activeFilter);
+  const filteredPosts = activeFilter === 'all' ? posts : posts.filter((post) => post.category === activeFilter);
 
   const filterTabs = [
     { value: 'all', label: 'All', icon: Compass },
-    ...exploreCategories.map(cat => ({
+    ...exploreCategories.map((cat) => ({
       value: cat,
       label: categoryConfig[cat].label,
       icon: categoryConfig[cat].icon,
@@ -182,12 +142,9 @@ Please review this post in the admin panel.`;
               <Sparkles className="h-5 w-5" />
               <span className="text-sm font-medium uppercase tracking-wider">Community Board</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
-              Explore & Share
-            </h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">Explore &amp; Share</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Share thoughts, ask for help, post confessions, or spread the word. 
-              All posts are reviewed before going live.
+              Share thoughts, ask for help, post confessions, or spread the word. All posts are reviewed before going live.
             </p>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -197,7 +154,7 @@ Please review this post in the admin panel.`;
                   Create Post
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
                 <DialogHeader>
                   <DialogTitle>Create New Post</DialogTitle>
                 </DialogHeader>
@@ -205,10 +162,7 @@ Please review this post in the admin panel.`;
                   {/* Category */}
                   <div className="space-y-2">
                     <Label>Category *</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value: ExploreCategory) => setFormData({ ...formData, category: value })}
-                    >
+                    <Select value={formData.category} onValueChange={(value: ExploreCategory) => setFormData({ ...formData, category: value })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -242,14 +196,16 @@ Please review this post in the admin panel.`;
                       onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                       placeholder="Share your thoughts, ask a question, or make a confession..."
                       rows={5}
-                      maxLength={MAX_CONTENT_LENGTH + 50} // Allow some overflow for validation
+                      maxLength={MAX_CONTENT_LENGTH + 50}
                     />
                   </div>
 
                   {/* Anonymous Toggle */}
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="space-y-0.5">
-                      <Label htmlFor="anonymous" className="text-sm font-medium">Post Anonymously</Label>
+                      <Label htmlFor="anonymous" className="text-sm font-medium">
+                        Post Anonymously
+                      </Label>
                       <p className="text-xs text-muted-foreground">Your name won't be shown</p>
                     </div>
                     <Switch
@@ -263,20 +219,14 @@ Please review this post in the admin panel.`;
                   {!formData.isAnonymous && (
                     <div className="space-y-2">
                       <Label>Your Name *</Label>
-                      <Input
-                        value={formData.authorName}
-                        onChange={(e) => setFormData({ ...formData, authorName: e.target.value })}
-                        placeholder="Enter your name"
-                      />
+                      <Input value={formData.authorName} onChange={(e) => setFormData({ ...formData, authorName: e.target.value })} placeholder="Enter your name" />
                     </div>
                   )}
 
                   {/* Image Coming Soon Notice */}
                   <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-dashed border-border">
                     <ImageOff className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <p className="text-xs text-muted-foreground">
-                      📸 Image posts are coming soon!
-                    </p>
+                    <p className="text-xs text-muted-foreground">📸 Image posts are coming soon!</p>
                   </div>
 
                   <div className="pt-2">
@@ -290,9 +240,7 @@ Please review this post in the admin panel.`;
                         'Submit for Approval'
                       )}
                     </Button>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Posts are reviewed before going live
-                    </p>
+                    <p className="text-xs text-muted-foreground text-center mt-2">Posts are reviewed before going live</p>
                   </div>
                 </form>
               </DialogContent>
@@ -309,11 +257,7 @@ Please review this post in the admin panel.`;
               {filterTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm px-2 sm:px-3"
-                  >
+                  <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1.5 text-xs sm:text-sm px-2 sm:px-3">
                     <Icon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{tab.label}</span>
                   </TabsTrigger>
@@ -333,18 +277,14 @@ Please review this post in the admin panel.`;
             </div>
           )}
 
-          {error && (
-            <div className="text-center py-20 text-destructive">{error}</div>
-          )}
+          {error && <div className="text-center py-20 text-destructive">{error}</div>}
 
           {!loading && !error && filteredPosts.length === 0 && (
             <Card className="border-dashed">
               <CardContent className="py-16 text-center">
                 <Compass className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="font-semibold text-lg mb-2">No posts yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Be the first to share something with the community!
-                </p>
+                <p className="text-muted-foreground mb-4">Be the first to share something with the community!</p>
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Post
