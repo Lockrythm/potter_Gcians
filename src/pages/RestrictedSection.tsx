@@ -11,7 +11,7 @@ import { useAllExplorePosts } from '@/hooks/useExplorePosts';
 import { Book, BookCondition, BookType, Category } from '@/types/book';
 import { Product, productCategories } from '@/types/product';
 import { Order } from '@/types/order';
-import { ExplorePost, ExplorePostType, ExplorePostStatus, explorePostTypes } from '@/types/explore';
+import { ExplorePost, ExploreCategory, ExplorePostStatus, exploreCategories } from '@/types/explore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,12 +99,10 @@ export default function RestrictedSection() {
   const [editingPost, setEditingPost] = useState<ExplorePost | null>(null);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
   const [postFormData, setPostFormData] = useState({
-    title: '',
-    description: '',
-    price: 0,
-    type: 'product' as ExplorePostType,
+    content: '',
+    category: 'general' as ExploreCategory,
     authorName: '',
-    authorContact: '',
+    isAnonymous: false,
     status: 'pending' as ExplorePostStatus,
     adminNotes: '',
   });
@@ -359,12 +357,10 @@ export default function RestrictedSection() {
   const openEditPostDialog = (post: ExplorePost) => {
     setEditingPost(post);
     setPostFormData({
-      title: post.title,
-      description: post.description,
-      price: post.price,
-      type: post.type,
+      content: post.content,
+      category: post.category,
       authorName: post.authorName,
-      authorContact: post.authorContact,
+      isAnonymous: post.isAnonymous,
       status: post.status,
       adminNotes: post.adminNotes || '',
     });
@@ -380,7 +376,7 @@ export default function RestrictedSection() {
         ...postFormData,
         updatedAt: serverTimestamp(),
       });
-      toast({ title: 'Post Updated', description: `"${postFormData.title}" has been updated.` });
+      toast({ title: 'Post Updated', description: 'Post has been updated.' });
       setIsPostDialogOpen(false);
       setEditingPost(null);
     } catch (err) {
@@ -390,11 +386,12 @@ export default function RestrictedSection() {
   };
 
   const handlePostDelete = async (post: ExplorePost) => {
-    if (!confirm(`Are you sure you want to delete "${post.title}"?`)) return;
+    const preview = post.content.substring(0, 30) + (post.content.length > 30 ? '...' : '');
+    if (!confirm(`Are you sure you want to delete this post? "${preview}"`)) return;
 
     try {
       await deleteDoc(doc(db, 'explore_posts', post.id));
-      toast({ title: 'Post Deleted', description: `"${post.title}" has been removed.` });
+      toast({ title: 'Post Deleted', description: 'Post has been removed.' });
     } catch (err) {
       console.error('Error deleting post:', err);
       toast({ title: 'Error', description: 'Failed to delete post.', variant: 'destructive' });
@@ -409,12 +406,23 @@ export default function RestrictedSection() {
       });
       toast({ 
         title: newStatus === 'approved' ? 'Post Approved!' : newStatus === 'rejected' ? 'Post Rejected' : 'Status Updated',
-        description: `"${post.title}" is now ${newStatus}.`,
+        description: `Post is now ${newStatus}.`,
       });
     } catch (err) {
       console.error('Error updating post status:', err);
       toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
     }
+  };
+
+  const getCategoryEmoji = (category: ExploreCategory) => {
+    const emojis: Record<ExploreCategory, string> = {
+      books: '📚',
+      confessions: '🤫',
+      help: '🆘',
+      notices: '📢',
+      general: '💬',
+    };
+    return emojis[category] || '💬';
   };
 
   // Password Gate
@@ -1077,23 +1085,19 @@ export default function RestrictedSection() {
                     {/* Mobile Card View */}
                     <div className="space-y-3 md:hidden">
                       {explorePosts.map((post) => (
-                        <Card key={post.id} className="border-border/50">
+                        <Card key={post.id} className={`border-border/50 ${post.status === 'pending' ? 'border-l-4 border-l-yellow-500' : ''}`}>
                           <CardContent className="p-3">
                             <div className="flex gap-3">
-                              <div className="w-14 h-14 bg-muted rounded overflow-hidden flex-shrink-0">
-                                {post.imageUrl ? (
-                                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-lg">
-                                    {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
-                                  </div>
-                                )}
+                              <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-lg shrink-0">
+                                {getCategoryEmoji(post.category)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-sm line-clamp-1">{post.title}</p>
-                                    <p className="text-xs text-muted-foreground">{post.authorName}</p>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm line-clamp-2">{post.content}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {post.isAnonymous ? 'Anonymous' : post.authorName}
+                                    </p>
                                   </div>
                                   <Badge
                                     variant={post.status === 'approved' ? 'default' : post.status === 'rejected' ? 'destructive' : 'secondary'}
@@ -1102,12 +1106,8 @@ export default function RestrictedSection() {
                                     {post.status}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="outline" className="text-[10px] capitalize">{post.type}</Badge>
-                                  <span className="text-xs text-primary font-medium">Rs {post.price}</span>
-                                </div>
                                 <div className="flex items-center justify-between mt-2">
-                                  <p className="text-[10px] text-muted-foreground">{post.authorContact}</p>
+                                  <Badge variant="outline" className="text-[10px] capitalize">{post.category}</Badge>
                                   <div className="flex gap-0.5">
                                     {post.status === 'pending' && (
                                       <>
@@ -1140,8 +1140,8 @@ export default function RestrictedSection() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Post</TableHead>
-                              <TableHead>Type</TableHead>
+                              <TableHead>Content</TableHead>
+                              <TableHead>Category</TableHead>
                               <TableHead>Author</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -1149,31 +1149,18 @@ export default function RestrictedSection() {
                           </TableHeader>
                           <TableBody>
                             {explorePosts.map((post) => (
-                              <TableRow key={post.id}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 bg-muted rounded overflow-hidden flex-shrink-0">
-                                      {post.imageUrl ? (
-                                        <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-sm">
-                                          {post.type === 'book' ? '📚' : post.type === 'product' ? '📦' : '💼'}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="font-medium text-sm line-clamp-1">{post.title}</p>
-                                      <p className="text-xs text-muted-foreground">Rs {post.price}</p>
-                                    </div>
-                                  </div>
+                              <TableRow key={post.id} className={post.status === 'pending' ? 'bg-yellow-500/5' : ''}>
+                                <TableCell className="max-w-xs">
+                                  <p className="text-sm line-clamp-2">{post.content}</p>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="capitalize text-xs">{post.type}</Badge>
+                                  <Badge variant="outline" className="capitalize text-xs">
+                                    {getCategoryEmoji(post.category)} {post.category}
+                                  </Badge>
                                 </TableCell>
                                 <TableCell>
                                   <div className="text-xs">
-                                    <p className="font-medium">{post.authorName}</p>
-                                    <p className="text-muted-foreground">{post.authorContact}</p>
+                                    <p className="font-medium">{post.isAnonymous ? 'Anonymous' : post.authorName}</p>
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -1225,17 +1212,24 @@ export default function RestrictedSection() {
             </DialogHeader>
             <form onSubmit={handlePostSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-sm">Title</Label>
-                <Input value={postFormData.title} onChange={(e) => setPostFormData({ ...postFormData, title: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Description</Label>
-                <Textarea value={postFormData.description} onChange={(e) => setPostFormData({ ...postFormData, description: e.target.value })} />
+                <Label className="text-sm">Content</Label>
+                <Textarea 
+                  value={postFormData.content} 
+                  onChange={(e) => setPostFormData({ ...postFormData, content: e.target.value })} 
+                  rows={4}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Price (Rs)</Label>
-                  <Input type="number" value={postFormData.price} onChange={(e) => setPostFormData({ ...postFormData, price: Number(e.target.value) })} />
+                  <Label className="text-sm">Category</Label>
+                  <Select value={postFormData.category} onValueChange={(v: ExploreCategory) => setPostFormData({ ...postFormData, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {exploreCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm">Status</Label>
@@ -1248,6 +1242,22 @@ export default function RestrictedSection() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Author Name</Label>
+                <Input 
+                  value={postFormData.authorName} 
+                  onChange={(e) => setPostFormData({ ...postFormData, authorName: e.target.value })}
+                  disabled={postFormData.isAnonymous}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="postAnonymous"
+                  checked={postFormData.isAnonymous}
+                  onCheckedChange={(checked) => setPostFormData({ ...postFormData, isAnonymous: checked })}
+                />
+                <Label htmlFor="postAnonymous" className="text-sm">Anonymous Post</Label>
               </div>
               <div className="space-y-2">
                 <Label className="text-sm">Admin Notes</Label>

@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { useExplorePosts } from '@/hooks/useExplorePosts';
-import { ExplorePost, ExplorePostType, explorePostTypes } from '@/types/explore';
+import { ExplorePost, ExploreCategory, exploreCategories } from '@/types/explore';
 import { ExplorePostCard } from '@/components/ExplorePostCard';
 import { Navbar } from '@/components/Navbar';
 import { CartDrawer } from '@/components/CartDrawer';
@@ -13,48 +12,55 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Loader2, Compass, BookOpen, Package, Briefcase, Sparkles } from 'lucide-react';
+import { Plus, Loader2, Compass, BookOpen, MessageSquare, HelpCircle, Bell, MessagesSquare, Sparkles, ImageOff } from 'lucide-react';
 
 const WHATSAPP_NUMBER = '923126203644';
+const MAX_CONTENT_LENGTH = 400;
+
+const categoryConfig: Record<ExploreCategory, { icon: typeof BookOpen; label: string }> = {
+  books: { icon: BookOpen, label: 'Books' },
+  confessions: { icon: MessageSquare, label: 'Confessions' },
+  help: { icon: HelpCircle, label: 'Help' },
+  notices: { icon: Bell, label: 'Notices' },
+  general: { icon: MessagesSquare, label: 'General' },
+};
 
 export default function Explore() {
   const { posts, loading, error } = useExplorePosts('approved');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [activeFilter, setActiveFilter] = useState<ExplorePostType | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<ExploreCategory | 'all'>('all');
   
   const [formData, setFormData] = useState({
-    type: 'product' as ExplorePostType,
-    title: '',
-    description: '',
-    price: 0,
+    category: 'general' as ExploreCategory,
+    content: '',
     authorName: '',
-    authorContact: '',
+    isAnonymous: false,
   });
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
-  };
-
   const generatePostWhatsAppMessage = (data: typeof formData): string => {
-    const typeEmoji = data.type === 'book' ? '📚' : data.type === 'product' ? '📦' : '💼';
+    const categoryEmoji = {
+      books: '📚',
+      confessions: '🤫',
+      help: '🆘',
+      notices: '📢',
+      general: '💬',
+    };
+    
+    const displayName = data.isAnonymous ? 'Anonymous' : data.authorName;
+    const contentPreview = data.content.length > 100 ? data.content.substring(0, 100) + '...' : data.content;
+    
     return `🆕 New Explore Post Submitted!
 
-${typeEmoji} Type: ${data.type.toUpperCase()}
-📝 Title: ${data.title}
-💬 Description: ${data.description || 'No description'}
-💰 Price: Rs ${data.price}
-
-👤 Submitted by: ${data.authorName}
-📞 Contact: ${data.authorContact}
+${categoryEmoji[data.category]} Category: ${data.category.toUpperCase()}
+💬 Content: ${contentPreview}
+👤 Author: ${displayName}
 
 ⏳ Status: Pending Approval
 🕐 Submitted at: ${new Date().toLocaleString()}
@@ -79,16 +85,16 @@ Please review this post in the admin panel.`;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim()) {
-      toast({ title: 'Missing title', description: 'Please enter a title for your post.', variant: 'destructive' });
+    if (!formData.content.trim()) {
+      toast({ title: 'Missing content', description: 'Please write something to post.', variant: 'destructive' });
       return;
     }
-    if (!formData.authorName.trim()) {
-      toast({ title: 'Missing name', description: 'Please enter your name.', variant: 'destructive' });
+    if (formData.content.length > MAX_CONTENT_LENGTH) {
+      toast({ title: 'Content too long', description: `Maximum ${MAX_CONTENT_LENGTH} characters allowed.`, variant: 'destructive' });
       return;
     }
-    if (!formData.authorContact.trim()) {
-      toast({ title: 'Missing contact', description: 'Please enter your contact information.', variant: 'destructive' });
+    if (!formData.isAnonymous && !formData.authorName.trim()) {
+      toast({ title: 'Missing name', description: 'Please enter your name or post anonymously.', variant: 'destructive' });
       return;
     }
 
@@ -99,32 +105,11 @@ Please review this post in the admin panel.`;
     const waWindow = window.open('', '_blank');
 
     try {
-      let imageUrl = '';
-      
-      // Try to upload image if provided
-      if (imageFile) {
-        try {
-          const storageRef = ref(storage, `explore/${Date.now()}_${imageFile.name}`);
-          const snapshot = await uploadBytes(storageRef, imageFile);
-          imageUrl = await getDownloadURL(snapshot.ref);
-        } catch (uploadError) {
-          console.error('Image upload error (continuing without image):', uploadError);
-          toast({ 
-            title: 'Image upload failed', 
-            description: 'Post will be created without image. Check Firebase Storage rules.',
-            variant: 'default'
-          });
-        }
-      }
-
       const postData = {
-        type: formData.type,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        price: formData.price || 0,
-        authorName: formData.authorName.trim(),
-        authorContact: formData.authorContact.trim(),
-        imageUrl,
+        category: formData.category,
+        content: formData.content.trim(),
+        authorName: formData.isAnonymous ? 'Anonymous' : formData.authorName.trim(),
+        isAnonymous: formData.isAnonymous,
         status: 'pending',
         createdAt: serverTimestamp(),
       };
@@ -140,14 +125,11 @@ Please review this post in the admin panel.`;
       });
 
       setFormData({
-        type: 'product',
-        title: '',
-        description: '',
-        price: 0,
+        category: 'general',
+        content: '',
         authorName: '',
-        authorContact: '',
+        isAnonymous: false,
       });
-      setImageFile(null);
       setIsDialogOpen(false);
     } catch (err) {
       waWindow?.close();
@@ -164,13 +146,15 @@ Please review this post in the admin panel.`;
 
   const filteredPosts = activeFilter === 'all' 
     ? posts 
-    : posts.filter(post => post.type === activeFilter);
+    : posts.filter(post => post.category === activeFilter);
 
   const filterTabs = [
     { value: 'all', label: 'All', icon: Compass },
-    { value: 'book', label: 'Books', icon: BookOpen },
-    { value: 'product', label: 'Products', icon: Package },
-    { value: 'service', label: 'Services', icon: Briefcase },
+    ...exploreCategories.map(cat => ({
+      value: cat,
+      label: categoryConfig[cat].label,
+      icon: categoryConfig[cat].icon,
+    })),
   ];
 
   return (
@@ -181,7 +165,7 @@ Please review this post in the admin panel.`;
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-8 px-4 bg-gradient-to-b from-primary/5 to-background">
-        <div className="max-w-6xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -189,14 +173,14 @@ Please review this post in the admin panel.`;
           >
             <div className="flex items-center justify-center gap-2 text-primary">
               <Sparkles className="h-5 w-5" />
-              <span className="text-sm font-medium uppercase tracking-wider">Community Marketplace</span>
+              <span className="text-sm font-medium uppercase tracking-wider">Community Board</span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
               Explore & Share
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Discover books, products, and services shared by our community. 
-              Have something to offer? Submit your post for approval!
+              Share thoughts, ask for help, post confessions, or spread the word. 
+              All posts are reviewed before going live.
             </p>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -211,81 +195,81 @@ Please review this post in the admin panel.`;
                   <DialogTitle>Create New Post</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                  {/* Category */}
                   <div className="space-y-2">
-                    <Label>Type *</Label>
+                    <Label>Category *</Label>
                     <Select
-                      value={formData.type}
-                      onValueChange={(value: ExplorePostType) => setFormData({ ...formData, type: value })}
+                      value={formData.category}
+                      onValueChange={(value: ExploreCategory) => setFormData({ ...formData, category: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {explorePostTypes.map((type) => (
-                          <SelectItem key={type} value={type} className="capitalize">
-                            {type}
-                          </SelectItem>
-                        ))}
+                        {exploreCategories.map((cat) => {
+                          const config = categoryConfig[cat];
+                          const Icon = config.icon;
+                          return (
+                            <SelectItem key={cat} value={cat}>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
 
+                  {/* Content */}
                   <div className="space-y-2">
-                    <Label>Title *</Label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="What are you offering?"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Description</Label>
+                    <div className="flex justify-between items-center">
+                      <Label>What's on your mind? *</Label>
+                      <span className={`text-xs ${formData.content.length > MAX_CONTENT_LENGTH ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {formData.content.length}/{MAX_CONTENT_LENGTH}
+                      </span>
+                    </div>
                     <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Describe your item or service..."
-                      rows={3}
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      placeholder="Share your thoughts, ask a question, or make a confession..."
+                      rows={5}
+                      maxLength={MAX_CONTENT_LENGTH + 50} // Allow some overflow for validation
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Price (Rs)</Label>
-                    <Input
-                      type="number"
-                      value={formData.price || ''}
-                      onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                      placeholder="0"
+                  {/* Anonymous Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="anonymous" className="text-sm font-medium">Post Anonymously</Label>
+                      <p className="text-xs text-muted-foreground">Your name won't be shown</p>
+                    </div>
+                    <Switch
+                      id="anonymous"
+                      checked={formData.isAnonymous}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isAnonymous: checked })}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Image</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Author Name (if not anonymous) */}
+                  {!formData.isAnonymous && (
                     <div className="space-y-2">
                       <Label>Your Name *</Label>
                       <Input
                         value={formData.authorName}
                         onChange={(e) => setFormData({ ...formData, authorName: e.target.value })}
-                        placeholder="John Doe"
+                        placeholder="Enter your name"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Contact *</Label>
-                      <Input
-                        value={formData.authorContact}
-                        onChange={(e) => setFormData({ ...formData, authorContact: e.target.value })}
-                        placeholder="Phone/Email"
-                      />
-                    </div>
+                  )}
+
+                  {/* Image Coming Soon Notice */}
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-dashed border-border">
+                    <ImageOff className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      📸 Image posts are coming soon!
+                    </p>
                   </div>
 
                   <div className="pt-2">
@@ -312,16 +296,16 @@ Please review this post in the admin panel.`;
 
       {/* Filter Tabs */}
       <section className="sticky top-16 z-30 bg-background/95 backdrop-blur-lg border-b border-border/50 px-4 py-3">
-        <div className="max-w-6xl mx-auto">
-          <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as ExplorePostType | 'all')}>
-            <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-flex">
+        <div className="max-w-4xl mx-auto">
+          <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as ExploreCategory | 'all')}>
+            <TabsList className="w-full sm:w-auto grid grid-cols-6 sm:inline-flex overflow-x-auto">
               {filterTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm"
+                    className="flex items-center gap-1.5 text-xs sm:text-sm px-2 sm:px-3"
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -335,7 +319,7 @@ Please review this post in the admin panel.`;
 
       {/* Posts Grid */}
       <section className="px-4 py-8">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {loading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -363,7 +347,7 @@ Please review this post in the admin panel.`;
           )}
 
           {!loading && !error && filteredPosts.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPosts.map((post, index) => (
                 <ExplorePostCard key={post.id} post={post} index={index} />
               ))}
