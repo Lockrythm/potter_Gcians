@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ExplorePost, ExplorePostStatus } from '@/types/explore';
+import { friendlyFirestoreError } from '@/lib/firebase-errors';
 
 export function useExplorePosts(statusFilter?: ExplorePostStatus) {
   const [posts, setPosts] = useState<ExplorePost[]>([]);
@@ -10,7 +11,7 @@ export function useExplorePosts(statusFilter?: ExplorePostStatus) {
 
   useEffect(() => {
     let q = query(collection(db, 'explore_posts'), orderBy('createdAt', 'desc'));
-    
+
     if (statusFilter) {
       q = query(
         collection(db, 'explore_posts'),
@@ -27,11 +28,12 @@ export function useExplorePosts(statusFilter?: ExplorePostStatus) {
           ...doc.data(),
         })) as ExplorePost[];
         setPosts(postsData);
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error('Error fetching explore posts:', err);
-        setError('Failed to load posts');
+        setError(friendlyFirestoreError(err, 'Failed to load posts'));
         setLoading(false);
       }
     );
@@ -58,11 +60,12 @@ export function useAllExplorePosts() {
           ...doc.data(),
         })) as ExplorePost[];
         setPosts(postsData);
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error('Error fetching all explore posts:', err);
-        setError('Failed to load posts');
+        setError(friendlyFirestoreError(err, 'Failed to load posts'));
         setLoading(false);
       }
     );

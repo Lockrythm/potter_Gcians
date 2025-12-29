@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/order';
+import { friendlyFirestoreError } from '@/lib/firebase-errors';
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -9,10 +10,7 @@ export function useOrders() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const ordersQuery = query(
-      collection(db, 'orders'),
-      orderBy('createdAt', 'desc')
-    );
+    const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(
       ordersQuery,
@@ -25,17 +23,19 @@ export function useOrders() {
             customerInfo: data.customerInfo || {},
             total: data.total || 0,
             status: data.status || 'pending',
-            createdAt: data.createdAt instanceof Timestamp
-              ? data.createdAt.toDate()
-              : new Date(data.createdAt),
+            createdAt:
+              data.createdAt instanceof Timestamp
+                ? data.createdAt.toDate()
+                : new Date(data.createdAt),
           } as Order;
         });
         setOrders(ordersData);
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error('Error fetching orders:', err);
-        setError('Failed to load orders');
+        setError(friendlyFirestoreError(err, 'Failed to load orders'));
         setLoading(false);
       }
     );

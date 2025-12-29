@@ -24,7 +24,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
+import { friendlyFirestoreError } from '@/lib/firebase-errors';
 import { Plus, Pencil, Trash2, Lock, Eye, EyeOff, Tag, BookOpen, Home, ArrowLeft, ShoppingBag, ChevronDown, ChevronUp, Package, Compass, Check, X } from 'lucide-react';
 import potterLogo from '@/assets/potter-logo.png';
 
@@ -76,25 +78,25 @@ export default function RestrictedSection() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Book dialog state
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [bookFormData, setBookFormData] = useState<BookFormData>(initialBookFormData);
   const [bookImageFile, setBookImageFile] = useState<File | null>(null);
   const [isBookSubmitting, setIsBookSubmitting] = useState(false);
-  
+
   // Product dialog state
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productFormData, setProductFormData] = useState<ProductFormData>(initialProductFormData);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [isProductSubmitting, setIsProductSubmitting] = useState(false);
-  
+
   // Category management
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
-  
+
   // Explore post management
   const [editingPost, setEditingPost] = useState<ExplorePost | null>(null);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
@@ -109,10 +111,14 @@ export default function RestrictedSection() {
 
   const { books, loading: booksLoading, error: booksError } = useAllBooks();
   const { products, loading: productsLoading, error: productsError } = useAllProducts();
-  const { categories, loading: categoriesLoading } = useCategories();
-  const { orders, loading: ordersLoading, updateOrderStatus } = useOrders();
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
+  const { orders, loading: ordersLoading, error: ordersError, updateOrderStatus } = useOrders();
   const { posts: explorePosts, loading: postsLoading, error: postsError } = useAllExplorePosts();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  const firestoreBlocked = [booksError, productsError, categoriesError, ordersError, postsError].some(
+    (e) => !!e && (e.includes('Firestore is disabled') || e.includes('Cloud Firestore API') || e.includes('Firestore'))
+  );
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

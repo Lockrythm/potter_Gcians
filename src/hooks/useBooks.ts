@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { db } from '@/lib/firebase';
 import { Book } from '@/types/book';
 import { TEST_BOOKS } from '@/data/testBooks';
+import { friendlyFirestoreError } from '@/lib/firebase-errors';
 
 interface UseBookFilters {
   category?: string;
@@ -27,7 +28,7 @@ export function useBooks(filters: UseBookFilters = {}) {
   useEffect(() => {
     // Start with test books immediately
     let testBooks = getTestBooksWithIds();
-    
+
     // Apply filters to test books
     if (filters.category) {
       testBooks = testBooks.filter((b) => b.category === filters.category);
@@ -36,9 +37,7 @@ export function useBooks(filters: UseBookFilters = {}) {
       testBooks = testBooks.filter((b) => b.condition === filters.condition);
     }
     if (filters.type) {
-      testBooks = testBooks.filter(
-        (b) => b.type === filters.type || b.type === 'both'
-      );
+      testBooks = testBooks.filter((b) => b.type === filters.type || b.type === 'both');
     }
     if (filters.searchQuery) {
       const search = filters.searchQuery.toLowerCase();
@@ -49,13 +48,13 @@ export function useBooks(filters: UseBookFilters = {}) {
           b.category.toLowerCase().includes(search)
       );
     }
-    
+
     setBooks(testBooks);
 
-    // Try to fetch from Firebase (will merge with test books if successful)
+    // Try to fetch from Firebase (will replace test books if successful)
     try {
       const booksRef = collection(db, 'books');
-      let q = query(booksRef, where('isAvailable', '==', true), orderBy('createdAt', 'desc'));
+      const q = query(booksRef, where('isAvailable', '==', true), orderBy('createdAt', 'desc'));
 
       const unsubscribe = onSnapshot(
         q,
@@ -75,9 +74,7 @@ export function useBooks(filters: UseBookFilters = {}) {
               fetchedBooks = fetchedBooks.filter((b) => b.condition === filters.condition);
             }
             if (filters.type) {
-              fetchedBooks = fetchedBooks.filter(
-                (b) => b.type === filters.type || b.type === 'both'
-              );
+              fetchedBooks = fetchedBooks.filter((b) => b.type === filters.type || b.type === 'both');
             }
             if (filters.searchQuery) {
               const search = filters.searchQuery.toLowerCase();
@@ -91,16 +88,20 @@ export function useBooks(filters: UseBookFilters = {}) {
 
             setBooks(fetchedBooks);
           }
+          setError(null);
           setLoading(false);
         },
-        () => {
+        (err) => {
+          console.error('Error fetching books:', err);
+          setError(friendlyFirestoreError(err, 'Failed to load books'));
           // Firebase error - keep showing test books
           setLoading(false);
         }
       );
 
       return () => unsubscribe();
-    } catch {
+    } catch (err) {
+      setError(friendlyFirestoreError(err, 'Failed to load books'));
       // Firebase not configured - keep showing test books
       setLoading(false);
     }
@@ -130,15 +131,19 @@ export function useAllBooks() {
             })) as Book[];
             setBooks(fetchedBooks);
           }
+          setError(null);
           setLoading(false);
         },
-        () => {
+        (err) => {
+          console.error('Error fetching all books:', err);
+          setError(friendlyFirestoreError(err, 'Failed to load books'));
           setLoading(false);
         }
       );
 
       return () => unsubscribe();
-    } catch {
+    } catch (err) {
+      setError(friendlyFirestoreError(err, 'Failed to load books'));
       setLoading(false);
     }
   }, []);
