@@ -100,10 +100,21 @@ Please review this post in the admin panel.`;
 
     try {
       let imageUrl = '';
+      
+      // Try to upload image if provided
       if (imageFile) {
-        const storageRef = ref(storage, `explore/${Date.now()}_${imageFile.name}`);
-        const snapshot = await uploadBytes(storageRef, imageFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
+        try {
+          const storageRef = ref(storage, `explore/${Date.now()}_${imageFile.name}`);
+          const snapshot = await uploadBytes(storageRef, imageFile);
+          imageUrl = await getDownloadURL(snapshot.ref);
+        } catch (uploadError) {
+          console.error('Image upload error (continuing without image):', uploadError);
+          toast({ 
+            title: 'Image upload failed', 
+            description: 'Post will be created without image. Check Firebase Storage rules.',
+            variant: 'default'
+          });
+        }
       }
 
       const postData = {
@@ -124,8 +135,8 @@ Please review this post in the admin panel.`;
       openWhatsAppNotification(waUrl, waWindow);
 
       toast({
-        title: 'Post Submitted!',
-        description: 'Your post is pending admin approval. We\'ll notify you once it\'s live.',
+        title: '🦉 OWL Sent!',
+        description: 'Your post is pending admin approval. An OWL notification has been sent!',
       });
 
       setFormData({
@@ -141,7 +152,11 @@ Please review this post in the admin panel.`;
     } catch (err) {
       waWindow?.close();
       console.error('Error submitting post:', err);
-      toast({ title: 'Error', description: 'Failed to submit post. Please try again.', variant: 'destructive' });
+      toast({ 
+        title: 'Submission Error', 
+        description: err instanceof Error ? err.message : 'Failed to submit post. Please try again.', 
+        variant: 'destructive' 
+      });
     } finally {
       setIsSubmitting(false);
     }
